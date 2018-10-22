@@ -46,7 +46,7 @@ public class Phi.Application : Granite.Application {
 
         canvas = new Phi.ResponsiveCanvas ();
         canvas.set_size_request (600, 600);
-        canvas.set_scale (2.0);
+        canvas.set_scale (1.232412);
         canvas.set_bounds (0, 0, 10000, 10000);
 
         var root = canvas.get_root_item ();
@@ -69,6 +69,8 @@ public class Phi.Application : Granite.Application {
             "line-width", 5.0,
             "stroke-color", "#9bdb4d",
             "fill-color", "#68b723");
+
+        var text = Goo.CanvasText.create (root, "Add text here", 20, 20, 200, Goo.CanvasAnchorType.NW, "font", "Open Sans 18");
 
         window.add (canvas);
         window.show_all ();

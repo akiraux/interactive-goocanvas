@@ -60,9 +60,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         selected_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
         if (selected_item != null) {
-            if (selected_item is Goo.CanvasRect) {
-                start_x = (selected_item as Goo.CanvasRect).x;
-                start_y = (selected_item as Goo.CanvasRect).y;
+            if (selected_item is Goo.CanvasItemSimple) {
+                start_x = (selected_item as Goo.CanvasItemSimple).x;
+                start_y = (selected_item as Goo.CanvasItemSimple).y;
             }
 
             holding = true;
@@ -90,16 +90,12 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public override bool motion_notify_event (Gdk.EventMotion event) {
         if (holding) {
-            double x = (event.x - event_x_root) / current_scale;
-            double y = (event.y - event_y_root) / current_scale;
+            delta_x = (event.x - event_x_root) / current_scale;
+            delta_y = (event.y - event_y_root) / current_scale;
             switch (holding_id) {
                 case 0: // Moving
-                    delta_x = x;
-                    delta_y = y;
-                    ((Goo.CanvasRect) selected_item).x = delta_x + start_x;
-                    ((Goo.CanvasRect) selected_item).y = delta_y + start_y;
-                    print (@"$x $y\n");
-
+                    ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
+                    ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
                     break;
                 //  case 1: // Top left
                 //      delta_x = fix_position (x, real_width, start_w);
