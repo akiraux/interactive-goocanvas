@@ -33,8 +33,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
      */
     public signal void item_moved (Goo.CanvasItem? item);
 
-
     public weak Goo.CanvasItem? selected_item;
+    public weak Goo.CanvasItem? hovered_item;
+    public weak Goo.CanvasItem? prev_hovered_item;
 
     private bool holding;
     private double event_x_root;
@@ -81,6 +82,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         }
 
         item_moved (selected_item);
+        add_hover_effect (selected_item);
 
         delta_x = 0;
         delta_y = 0;
@@ -90,6 +92,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public override bool motion_notify_event (Gdk.EventMotion event) {
         if (holding) {
+            remove_hover_effect (selected_item);
+
             delta_x = (event.x - event_x_root) / current_scale;
             delta_y = (event.y - event_y_root) / current_scale;
             switch (holding_id) {
@@ -132,9 +136,22 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 //      delta_x = fix_position (x, real_width, start_w);
                 //      break;
             }
+            
+        } else {
+            hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), true);
 
+            if (!(hovered_item is Goo.CanvasItemSimple)) {
+                remove_hover_effect (prev_hovered_item);
+                return false;
+            }
+
+            add_hover_effect (hovered_item);
+
+            if (prev_hovered_item != hovered_item) {
+                remove_hover_effect (prev_hovered_item);
+                prev_hovered_item = hovered_item;
+            }
         }
-
         return false;
     }
 
@@ -150,5 +167,21 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     private int fix_size (int size) {
         return size > MIN_SIZE ? size : MIN_SIZE;
+    }
+
+    private void add_hover_effect (Goo.CanvasItem? target) {
+        if (target == null) {
+            return;
+        }
+
+        (target as Goo.CanvasItemSimple).fill_color = "red";
+    }
+
+    private void remove_hover_effect (Goo.CanvasItem? target) {
+        if (target == null) {
+            return;
+        }
+
+        (target as Goo.CanvasItemSimple).fill_color = "blue";
     }
 }
