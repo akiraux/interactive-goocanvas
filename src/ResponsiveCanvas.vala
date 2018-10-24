@@ -35,7 +35,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public weak Goo.CanvasItem? selected_item;
     public weak Goo.CanvasItem? hovered_item;
-    public weak Goo.CanvasItem? prev_hovered_item;
+    public weak Goo.CanvasRect? hover_effect;
 
     private bool holding;
     private double event_x_root;
@@ -44,6 +44,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private double start_y;
     private double delta_x;
     private double delta_y;
+    private double hover_x;
+    private double hover_y;
     private double current_scale;
     private int holding_id = 0;
 
@@ -54,6 +56,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     }
 
     public override bool button_press_event (Gdk.EventButton event) {
+        remove_hover_effect ();
+
         current_scale = get_scale ();
         event_x_root = event.x;
         event_y_root = event.y;
@@ -91,68 +95,108 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     }
 
     public override bool motion_notify_event (Gdk.EventMotion event) {
-        if (holding) {
-            remove_hover_effect (selected_item);
+        if (!holding) {
+            motion_hover_event (event);
 
-            delta_x = (event.x - event_x_root) / current_scale;
-            delta_y = (event.y - event_y_root) / current_scale;
-            switch (holding_id) {
-                case 0: // Moving
-                    ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
-                    ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
-                    break;
-                //  case 1: // Top left
-                //      delta_x = fix_position (x, real_width, start_w);
-                //      delta_y = fix_position (y, real_height, start_h);
-                //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
-                //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-                //      break;
-                //  case 2: // Top
-                //      delta_y = fix_position (y, real_height, start_h);
-                //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-                //      break;
-                //  case 3: // Top right
-                //      delta_y = fix_position (y, real_height, start_h);
-                //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-                //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-                //      break;
-                //  case 4: // Right
-                //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-                //      break;
-                //  case 5: // Bottom Right
-                //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-                //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-                //      break;
-                //  case 6: // Bottom
-                //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-                //      break;
-                //  case 7: // Bottom left
-                //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-                //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
-                //      delta_x = fix_position (x, real_width, start_w);
-                //      break;
-                //  case 8: // Left
-                //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-                //      delta_x = fix_position (x, real_width, start_w);
-                //      break;
-            }
-            
-        } else {
-            hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), true);
-
-            if (!(hovered_item is Goo.CanvasItemSimple)) {
-                remove_hover_effect (prev_hovered_item);
-                return false;
-            }
-
-            add_hover_effect (hovered_item);
-
-            if (prev_hovered_item != hovered_item) {
-                remove_hover_effect (prev_hovered_item);
-                prev_hovered_item = hovered_item;
-            }
+            return false;
         }
+
+        delta_x = (event.x - event_x_root) / current_scale;
+        delta_y = (event.y - event_y_root) / current_scale;
+        switch (holding_id) {
+            case 0: // Moving
+                ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
+                ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
+                debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
+                break;
+            //  case 1: // Top left
+            //      delta_x = fix_position (x, real_width, start_w);
+            //      delta_y = fix_position (y, real_height, start_h);
+            //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
+            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
+            //      break;
+            //  case 2: // Top
+            //      delta_y = fix_position (y, real_height, start_h);
+            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
+            //      break;
+            //  case 3: // Top right
+            //      delta_y = fix_position (y, real_height, start_h);
+            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
+            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
+            //      break;
+            //  case 4: // Right
+            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
+            //      break;
+            //  case 5: // Bottom Right
+            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
+            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
+            //      break;
+            //  case 6: // Bottom
+            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
+            //      break;
+            //  case 7: // Bottom left
+            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
+            //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
+            //      delta_x = fix_position (x, real_width, start_w);
+            //      break;
+            //  case 8: // Left
+            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
+            //      delta_x = fix_position (x, real_width, start_w);
+            //      break;
+        }
+
         return false;
+    }
+
+    private void motion_hover_event (Gdk.EventMotion event) {
+        hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), false);
+
+        if (!(hovered_item is Goo.CanvasItem)) {
+            remove_hover_effect ();
+            return;
+        }
+
+        add_hover_effect (hovered_item);
+
+        if ((hover_x != (hovered_item as Goo.CanvasItemSimple).x
+            || hover_y != (hovered_item as Goo.CanvasItemSimple).y)
+            && hover_effect != hovered_item
+            ) {
+            remove_hover_effect ();
+        }
+
+        hover_x = (hovered_item as Goo.CanvasItemSimple).x;
+        hover_y = (hovered_item as Goo.CanvasItemSimple).y;
+    }
+
+    private void add_hover_effect (Goo.CanvasItem? target) {
+        if (target == null || hover_effect != null) {
+            return;
+        }
+
+        var item = (target as Goo.CanvasItemSimple);
+
+        var stroke = item.line_width;
+        var x = item.x - stroke;
+        var y = item.y - stroke;
+        var width = item.bounds.x2 - item.bounds.x1 + stroke;
+        var height = item.bounds.y2 - item.bounds.y1 + stroke;
+
+        var line_width = 2.0 / get_scale ();
+
+        hover_effect = Goo.CanvasRect.create (get_root_item (), x, y, width, height,
+                                   "line-width", line_width, 
+                                   "stroke-color", "#41c9fd"
+                                   );
+    }
+
+    private void remove_hover_effect () {
+        if (hover_effect == null) {
+            return;
+        }
+
+        hover_effect.remove ();
+        hover_effect = null;
     }
 
     // To make it so items can't become imposible to grab. TODOs
@@ -167,21 +211,5 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     private int fix_size (int size) {
         return size > MIN_SIZE ? size : MIN_SIZE;
-    }
-
-    private void add_hover_effect (Goo.CanvasItem? target) {
-        if (target == null) {
-            return;
-        }
-
-        (target as Goo.CanvasItemSimple).fill_color = "red";
-    }
-
-    private void remove_hover_effect (Goo.CanvasItem? target) {
-        if (target == null) {
-            return;
-        }
-
-        (target as Goo.CanvasItemSimple).fill_color = "blue";
     }
 }
