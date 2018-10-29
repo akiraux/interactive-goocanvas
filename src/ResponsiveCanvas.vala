@@ -36,7 +36,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     public weak Goo.CanvasItem? selected_item;
     public weak Goo.CanvasItem? select_effect;
 
-
      /*
         Grabber Pos: 0 1 2
                      7   3
@@ -76,17 +75,19 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         event_x_root = event.x;
         event_y_root = event.y;
 
-        selected_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
+        var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
-        if (selected_item != null) {
-            if (selected_item is Goo.CanvasItemSimple) {
-                start_x = (selected_item as Goo.CanvasItemSimple).x;
-                start_y = (selected_item as Goo.CanvasItemSimple).y;
+        if (clicked_item != null) {
+            if (clicked_item is Goo.CanvasItemSimple) {
+                start_x = (clicked_item as Goo.CanvasItemSimple).x;
+                start_y = (clicked_item as Goo.CanvasItemSimple).y;
             }
 
             holding = true;
-            add_select_effect (selected_item);
+            add_select_effect (clicked_item);
             grab_focus (selected_item);
+
+            selected_item = clicked_item;
         } else {
             grab_focus (get_root_item ());
         }
@@ -259,7 +260,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         }
 
         if ((target as Goo.CanvasItemSimple) in nobs) {
-            set_cursor_for_nob (target);
+            set_cursor_for_nob (get_grabbed_id (target));
             return;
         }
 
@@ -291,25 +292,43 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         hover_effect = null;
     }
 
-    private void set_cursor_for_nob (Goo.CanvasItem? target) {
-        if (target == nobs[0]) {
-            set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
-        } else if (target == nobs[2]) {
-            set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
-        } else if (target == nobs[4]) {
-            set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
-        } else if (target == nobs[6]) {
-            set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
-        } else if (target == nobs[3]) {
-            set_cursor (Gdk.CursorType.RIGHT_SIDE);
-        } else if (target == nobs[5]) {
-            set_cursor (Gdk.CursorType.BOTTOM_SIDE);
-        } else if (target == nobs[7]) {
-            set_cursor (Gdk.CursorType.LEFT_SIDE);
-        } else if (target == nobs[1]) {
-            set_cursor (Gdk.CursorType.TOP_SIDE);
-        } else {
-            set_cursor (Gdk.CursorType.ARROW);
+    private int get_grabbed_id (Goo.CanvasItem? target) {
+        for (int i = 0; i < 8; i++) {
+            if (target == nobs[i]) return i;
+        }
+
+        return -1;
+    }
+
+    private void set_cursor_for_nob (int grabbed_id) {
+        switch (grabbed_id) {
+            case -1:
+                set_cursor (Gdk.CursorType.ARROW);
+                break;
+            case 0:
+                set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
+                break;
+            case 1:
+                set_cursor (Gdk.CursorType.TOP_SIDE);
+                break;
+            case 2:
+                set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
+                break;
+            case 3:
+                set_cursor (Gdk.CursorType.RIGHT_SIDE);
+                break;
+            case 4:
+                set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
+                break;
+            case 5:
+                set_cursor (Gdk.CursorType.BOTTOM_SIDE);
+                break;
+            case 6:
+                set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
+                break;
+            case 7:
+                set_cursor (Gdk.CursorType.LEFT_SIDE);
+                break;
         }
     }
 
