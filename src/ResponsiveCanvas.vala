@@ -249,14 +249,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         select_effect.remove ();
         select_effect = null;
 
-        nobs[0].remove ();
-        nobs[6].remove ();
-        nobs[2].remove ();
-        nobs[4].remove ();
-        nobs[1].remove ();
-        nobs[3].remove ();
-        nobs[5].remove ();
-        nobs[7].remove ();
+        for (int i = 0; i < 8; i++) {
+            nobs[i].remove ();
+        }
     }
 
     private void add_hover_effect (Goo.CanvasItem? target) {
