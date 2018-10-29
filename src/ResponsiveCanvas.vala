@@ -69,7 +69,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public override bool button_press_event (Gdk.EventButton event) {
         remove_hover_effect ();
-        remove_select_effect ();
 
         current_scale = get_scale ();
         event_x_root = event.x;
@@ -78,16 +77,24 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
         if (clicked_item != null) {
-            if (clicked_item is Goo.CanvasItemSimple) {
-                start_x = (clicked_item as Goo.CanvasItemSimple).x;
-                start_y = (clicked_item as Goo.CanvasItemSimple).y;
-            }
-
+            var clicked_id = get_grabbed_id (clicked_item);
             holding = true;
-            add_select_effect (clicked_item);
-            grab_focus (selected_item);
 
-            selected_item = clicked_item;
+            if (clicked_id == -1) { // Non-nub was clicked
+                remove_select_effect ();
+                if (clicked_item is Goo.CanvasItemSimple) {
+                    start_x = (clicked_item as Goo.CanvasItemSimple).x;
+                    start_y = (clicked_item as Goo.CanvasItemSimple).y;
+                }
+
+                add_select_effect (clicked_item);
+                grab_focus (selected_item);
+
+                selected_item = clicked_item;
+                holding_id = -1;
+            } else { // nub was clicked
+                holding_id = clicked_id;
+            }
         } else {
             grab_focus (get_root_item ());
         }
@@ -139,37 +146,37 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
                 debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
-            //  case 1: // Top left
+            //  case 0: // Top left
             //      delta_x = fix_position (x, real_width, start_w);
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
             //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
             //      break;
-            //  case 2: // Top
+            //  case 1: // Top
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
             //      break;
-            //  case 3: // Top right
+            //  case 2: // Top right
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 4: // Right
+            //  case 3: // Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 5: // Bottom Right
+            //  case 4: // Bottom Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 6: // Bottom
+            //  case 5: // Bottom
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 7: // Bottom left
+            //  case 6: // Bottom left
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
-            //  case 8: // Left
+            //  case 7: // Left
             //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
