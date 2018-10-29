@@ -34,7 +34,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     public signal void item_moved (Goo.CanvasItem? item);
 
     public weak Goo.CanvasItem? selected_item;
-    public weak Goo.CanvasItem? select_effect;
+    private weak Goo.CanvasItem? select_effect;
 
      /*
         Grabber Pos: 0 1 2
@@ -43,10 +43,10 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         // -1 if no nub is grabbed
     */
-    public Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
+    private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
 
-    public weak Goo.CanvasItem? hovered_item;
-    public weak Goo.CanvasRect? hover_effect;
+    private weak Goo.CanvasItem? hovered_item;
+    private weak Goo.CanvasRect? hover_effect;
 
     private bool holding;
     private double event_x_root;
@@ -88,7 +88,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 }
 
                 add_select_effect (clicked_item);
-                grab_focus (selected_item);
+                grab_focus (clicked_item);
 
                 selected_item = clicked_item;
                 holding_id = -1;
@@ -235,8 +235,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 "stroke-color", "#41c9fd",
                 "fill-color", "#fff"
             );
-
-            //nobs[i].can_focus = false;
         }
 
         update_nub_position (-1, target);
