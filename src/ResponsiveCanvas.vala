@@ -36,15 +36,15 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     public weak Goo.CanvasItem? selected_item;
     public weak Goo.CanvasItem? select_effect;
 
-    public Goo.CanvasItem[] nobs;
-    private Goo.CanvasItem? nob_tl;
-    private weak Goo.CanvasItem? nob_tc;
-    private weak Goo.CanvasItem? nob_tr;
-    private weak Goo.CanvasItem? nob_rc;
-    private weak Goo.CanvasItem? nob_bl;
-    private weak Goo.CanvasItem? nob_bc;
-    private weak Goo.CanvasItem? nob_br;
-    private weak Goo.CanvasItem? nob_lc;
+
+     /*
+        Grabber Pos: 0 1 2
+                     7   3
+                     6 5 4
+
+        // -1 if no nub is grabbed
+    */
+    public Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
 
     public weak Goo.CanvasItem? hovered_item;
     public weak Goo.CanvasRect? hover_effect;
@@ -60,7 +60,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private double hover_y;
     private double nob_size;
     private double current_scale;
-    private int holding_id = 0;
+    private int holding_id = -1;
 
     construct {
         events |= Gdk.EventMask.BUTTON_PRESS_MASK;
@@ -126,8 +126,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         var stroke = item.line_width;
         var width = item.bounds.x2 - item.bounds.x1 + stroke;
         var height = item.bounds.y2 - item.bounds.y1 + stroke;
+
         switch (holding_id) {
-            case 0: // Moving
+            case -1: // Moving
                 ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
                 ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
 
@@ -135,37 +136,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 ((Goo.CanvasItemSimple) select_effect).x = delta_x + start_x - ((Goo.CanvasItemSimple) selected_item).line_width;
                 ((Goo.CanvasItemSimple) select_effect).y = delta_y + start_y - ((Goo.CanvasItemSimple) selected_item).line_width;
 
-                // TOP LEFT nob
-                ((Goo.CanvasItemSimple) nob_tl).x = delta_x + start_x - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_tl).y = delta_y + start_y - (nob_size / 2) - stroke;
-
-                // TOP RIGHT nob
-                ((Goo.CanvasItemSimple) nob_tr).x = delta_x + start_x + width - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_tr).y = delta_y + start_y - (nob_size / 2) - stroke;
-
-                // BOTTOM RIGHT nob
-                ((Goo.CanvasItemSimple) nob_br).x = delta_x + start_x + width - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_br).y = delta_y + start_y + height - (nob_size / 2) - stroke;
-
-                // BOTTOM LEFT nob
-                ((Goo.CanvasItemSimple) nob_bl).x = delta_x + start_x - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_bl).y = delta_y + start_y + height - (nob_size / 2) - stroke;
-
-                // TOP CENTER nob
-                ((Goo.CanvasItemSimple) nob_tc).x = delta_x + start_x + (width / 2) - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_tc).y = delta_y + start_y - (nob_size / 2) - stroke;
-
-                // RIGHT CENTER nob
-                ((Goo.CanvasItemSimple) nob_rc).x = delta_x + start_x + width - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_rc).y = delta_y + start_y + (height / 2) - (nob_size / 2) - stroke;
-
-                // BOTTOM CENTER nob
-                ((Goo.CanvasItemSimple) nob_bc).x = delta_x + start_x + (width / 2) - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_bc).y = delta_y + start_y + height - (nob_size / 2) - stroke;
-
-                // LEFT CENTER nob
-                ((Goo.CanvasItemSimple) nob_lc).x = delta_x + start_x - (nob_size / 2) - stroke;
-                ((Goo.CanvasItemSimple) nob_lc).y = delta_y + start_y + (height / 2) - (nob_size / 2) - stroke;
                 debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
             //  case 1: // Top left
@@ -203,6 +173,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
         }
+
+        update_nub_position (holding_id, selected_item);
 
         return false;
     }
@@ -243,82 +215,24 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         var height = item.bounds.y2 - item.bounds.y1 + stroke;
 
         select_effect = Goo.CanvasRect.create (get_root_item (), x, y, width, height,
-                                   "line-width", line_width, 
+                                   "line-width", line_width,
                                    "stroke-color", "#666"
                                    );
 
         nob_size = 10 / current_scale;
-        nob_tl = Goo.CanvasRect.create (get_root_item (), x - (nob_size / 2), y - (nob_size / 2), nob_size, nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
 
-        nob_tr = Goo.CanvasRect.create (get_root_item (), x + width - (nob_size / 2), y - (nob_size / 2), nob_size, nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
+        for (int i = 0; i < 8; i++) {
+            nobs[i] = Goo.CanvasRect.create (get_root_item (), 0, 0, nob_size, nob_size,
+                "line-width", line_width,
+                "stroke-color", "#41c9fd",
+                "fill-color", "#fff"
+            );
 
-        nob_bl = Goo.CanvasRect.create (get_root_item (), x - (nob_size / 2), y + height - (nob_size / 2), nob_size, nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
+            //nobs[i].can_focus = false;
+        }
 
-        nob_br = Goo.CanvasRect.create (get_root_item (), x + width - (nob_size / 2), y + height - (nob_size / 2), nob_size, nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
-
-        nob_tc = Goo.CanvasRect.create (get_root_item (), x + (width / 2) - (nob_size / 2), y - (nob_size / 2), nob_size, nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
-
-        nob_rc = Goo.CanvasRect.create (get_root_item (), 
-                                x + width - (nob_size / 2), 
-                                y + (height / 2) - (nob_size / 2), 
-                                nob_size, 
-                                nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
-
-        nob_bc = Goo.CanvasRect.create (get_root_item (), 
-                                x + (width / 2) - (nob_size / 2), 
-                                y + height - (nob_size / 2), 
-                                nob_size, 
-                                nob_size,
-                                "line-width", line_width, 
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
-
-        nob_lc = Goo.CanvasRect.create (get_root_item (),
-                                x - (nob_size / 2),
-                                y + (height / 2) - (nob_size / 2),
-                                nob_size,
-                                nob_size,
-                                "line-width", line_width,
-                                "stroke-color", "#41c9fd",
-                                "fill-color", "#fff"
-                                );
-
+        update_nub_position (-1, target);
         select_effect.can_focus = false;
-        nob_tl.can_focus = false;
-        nob_tr.can_focus = false;
-        nob_bl.can_focus = false;
-        nob_br.can_focus = false;
-        nob_tc.can_focus = false;
-        nob_rc.can_focus = false;
-        nob_bc.can_focus = false;
-        nob_lc.can_focus = false;
-
-        nobs = {nob_tl, nob_tr, nob_bl, nob_br, nob_tc, nob_rc, nob_bc, nob_lc};
     }
 
     private void remove_select_effect () {
@@ -329,14 +243,14 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         select_effect.remove ();
         select_effect = null;
 
-        nob_tl.remove ();
-        nob_bl.remove ();
-        nob_tr.remove ();
-        nob_br.remove ();
-        nob_tc.remove ();
-        nob_rc.remove ();
-        nob_bc.remove ();
-        nob_lc.remove ();
+        nobs[0].remove ();
+        nobs[6].remove ();
+        nobs[2].remove ();
+        nobs[4].remove ();
+        nobs[1].remove ();
+        nobs[3].remove ();
+        nobs[5].remove ();
+        nobs[7].remove ();
     }
 
     private void add_hover_effect (Goo.CanvasItem? target) {
@@ -344,7 +258,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return;
         }
 
-        if (target in nobs) {
+        if ((target as Goo.CanvasItemSimple) in nobs) {
             set_cursor_for_nob (target);
             return;
         }
@@ -359,7 +273,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         var height = item.bounds.y2 - item.bounds.y1 + stroke;
 
         hover_effect = Goo.CanvasRect.create (get_root_item (), x, y, width, height,
-                                   "line-width", line_width, 
+                                   "line-width", line_width,
                                    "stroke-color", "#41c9fd"
                                    );
 
@@ -378,25 +292,66 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     }
 
     private void set_cursor_for_nob (Goo.CanvasItem? target) {
-        if (target == nob_tl) {
+        if (target == nobs[0]) {
             set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
-        } else if (target == nob_tr) {
+        } else if (target == nobs[2]) {
             set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
-        } else if (target == nob_br) {
+        } else if (target == nobs[4]) {
             set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
-        } else if (target == nob_bl) {
+        } else if (target == nobs[6]) {
             set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
-        } else if (target == nob_rc) {
+        } else if (target == nobs[3]) {
             set_cursor (Gdk.CursorType.RIGHT_SIDE);
-        } else if (target == nob_bc) {
+        } else if (target == nobs[5]) {
             set_cursor (Gdk.CursorType.BOTTOM_SIDE);
-        } else if (target == nob_lc) {
+        } else if (target == nobs[7]) {
             set_cursor (Gdk.CursorType.LEFT_SIDE);
-        } else if (target == nob_tc) {
+        } else if (target == nobs[1]) {
             set_cursor (Gdk.CursorType.TOP_SIDE);
         } else {
             set_cursor (Gdk.CursorType.ARROW);
         }
+    }
+
+    // Updates all the nub's position arround the selected item, except for the grabbed nub
+    // TODO: concider item rotation into account
+    private void update_nub_position (int grabbed_nub, Goo.CanvasItem selected_item) {
+        var item = ((Goo.CanvasItemSimple) selected_item);
+        var stroke = item.line_width;
+        var width = item.bounds.x2 - item.bounds.x1 + stroke;
+        var height = item.bounds.y2 - item.bounds.y1 + stroke;
+
+        // TOP LEFT nob
+        nobs[0].x = delta_x + start_x - (nob_size / 2) - stroke;
+        nobs[0].y = delta_y + start_y - (nob_size / 2) - stroke;
+
+        // TOP CENTER nob
+        nobs[1].x = delta_x + start_x + (width / 2) - (nob_size / 2) - stroke;
+        nobs[1].y = delta_y + start_y - (nob_size / 2) - stroke;
+
+        // TOP RIGHT nob
+        nobs[2].x = delta_x + start_x + width - (nob_size / 2) - stroke;
+        nobs[2].y = delta_y + start_y - (nob_size / 2) - stroke;
+
+        // RIGHT CENTER nob
+        nobs[3].x = delta_x + start_x + width - (nob_size / 2) - stroke;
+        nobs[3].y = delta_y + start_y + (height / 2) - (nob_size / 2) - stroke;
+
+        // BOTTOM RIGHT nob
+        nobs[4].x = delta_x + start_x + width - (nob_size / 2) - stroke;
+        nobs[4].y = delta_y + start_y + height - (nob_size / 2) - stroke;
+
+        // BOTTOM CENTER nob
+        nobs[5].x = delta_x + start_x + (width / 2) - (nob_size / 2) - stroke;
+        nobs[5].y = delta_y + start_y + height - (nob_size / 2) - stroke;
+
+        // BOTTOM LEFT nob
+        nobs[6].x = delta_x + start_x - (nob_size / 2) - stroke;
+        nobs[6].y = delta_y + start_y + height - (nob_size / 2) - stroke;
+
+        // LEFT CENTER nob
+        nobs[7].x = delta_x + start_x - (nob_size / 2) - stroke;
+        nobs[7].y = delta_y + start_y + (height / 2) - (nob_size / 2) - stroke;
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {
