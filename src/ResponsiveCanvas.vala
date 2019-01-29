@@ -74,7 +74,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         event_x_root = event.x;
         event_y_root = event.y;
 
-        var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
+       var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
         if (clicked_item != null) {
             var clicked_id = get_grabbed_id (clicked_item);
@@ -96,6 +96,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 holding_id = clicked_id;
             }
         } else {
+            remove_select_effect ();
             grab_focus (get_root_item ());
         }
 
@@ -146,12 +147,12 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
                 debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
-            //  case 0: // Top left
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
-            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-            //      break;
+            case 0: // Top left
+                //  delta_x = fix_position (x, real_width, start_w);
+                //  delta_y = fix_position (y, real_height, start_h);
+                //  real_height = fix_size ((int) (start_h - 1 / current_scale * y));
+                //  real_width = fix_size ((int) (start_w - 1 / current_scale * x));
+                break;
             //  case 1: // Top
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
