@@ -34,8 +34,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     public signal void item_moved (Goo.CanvasItem? item);
 
     public weak Goo.CanvasItem? selected_item;
-    public weak Goo.CanvasItem? select_effect;
-
+    private weak Goo.CanvasItem? select_effect;
 
      /*
         Grabber Pos: 0 1 2
@@ -44,10 +43,10 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         // -1 if no nub is grabbed
     */
-    public Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
+    private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
 
-    public weak Goo.CanvasItem? hovered_item;
-    public weak Goo.CanvasRect? hover_effect;
+    private weak Goo.CanvasItem? hovered_item;
+    private weak Goo.CanvasRect? hover_effect;
 
     private bool holding;
     private double event_x_root;
@@ -70,23 +69,32 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public override bool button_press_event (Gdk.EventButton event) {
         remove_hover_effect ();
-        remove_select_effect ();
 
         current_scale = get_scale ();
         event_x_root = event.x;
         event_y_root = event.y;
 
-        selected_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
+        var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
-        if (selected_item != null) {
-            if (selected_item is Goo.CanvasItemSimple) {
-                start_x = (selected_item as Goo.CanvasItemSimple).x;
-                start_y = (selected_item as Goo.CanvasItemSimple).y;
-            }
-
+        if (clicked_item != null) {
+            var clicked_id = get_grabbed_id (clicked_item);
             holding = true;
-            add_select_effect (selected_item);
-            grab_focus (selected_item);
+
+            if (clicked_id == -1) { // Non-nub was clicked
+                remove_select_effect ();
+                if (clicked_item is Goo.CanvasItemSimple) {
+                    start_x = (clicked_item as Goo.CanvasItemSimple).x;
+                    start_y = (clicked_item as Goo.CanvasItemSimple).y;
+                }
+
+                add_select_effect (clicked_item);
+                grab_focus (clicked_item);
+
+                selected_item = clicked_item;
+                holding_id = -1;
+            } else { // nub was clicked
+                holding_id = clicked_id;
+            }
         } else {
             grab_focus (get_root_item ());
         }
@@ -138,37 +146,37 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
                 debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
-            //  case 1: // Top left
+            //  case 0: // Top left
             //      delta_x = fix_position (x, real_width, start_w);
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
             //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
             //      break;
-            //  case 2: // Top
+            //  case 1: // Top
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
             //      break;
-            //  case 3: // Top right
+            //  case 2: // Top right
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 4: // Right
+            //  case 3: // Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 5: // Bottom Right
+            //  case 4: // Bottom Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 6: // Bottom
+            //  case 5: // Bottom
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 7: // Bottom left
+            //  case 6: // Bottom left
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
-            //  case 8: // Left
+            //  case 7: // Left
             //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
@@ -227,8 +235,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 "stroke-color", "#41c9fd",
                 "fill-color", "#fff"
             );
-
-            //nobs[i].can_focus = false;
         }
 
         update_nub_position (-1, target);
@@ -243,14 +249,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         select_effect.remove ();
         select_effect = null;
 
-        nobs[0].remove ();
-        nobs[6].remove ();
-        nobs[2].remove ();
-        nobs[4].remove ();
-        nobs[1].remove ();
-        nobs[3].remove ();
-        nobs[5].remove ();
-        nobs[7].remove ();
+        for (int i = 0; i < 8; i++) {
+            nobs[i].remove ();
+        }
     }
 
     private void add_hover_effect (Goo.CanvasItem? target) {
@@ -259,7 +260,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         }
 
         if ((target as Goo.CanvasItemSimple) in nobs) {
-            set_cursor_for_nob (target);
+            set_cursor_for_nob (get_grabbed_id (target));
             return;
         }
 
@@ -291,25 +292,43 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         hover_effect = null;
     }
 
-    private void set_cursor_for_nob (Goo.CanvasItem? target) {
-        if (target == nobs[0]) {
-            set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
-        } else if (target == nobs[2]) {
-            set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
-        } else if (target == nobs[4]) {
-            set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
-        } else if (target == nobs[6]) {
-            set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
-        } else if (target == nobs[3]) {
-            set_cursor (Gdk.CursorType.RIGHT_SIDE);
-        } else if (target == nobs[5]) {
-            set_cursor (Gdk.CursorType.BOTTOM_SIDE);
-        } else if (target == nobs[7]) {
-            set_cursor (Gdk.CursorType.LEFT_SIDE);
-        } else if (target == nobs[1]) {
-            set_cursor (Gdk.CursorType.TOP_SIDE);
-        } else {
-            set_cursor (Gdk.CursorType.ARROW);
+    private int get_grabbed_id (Goo.CanvasItem? target) {
+        for (int i = 0; i < 8; i++) {
+            if (target == nobs[i]) return i;
+        }
+
+        return -1;
+    }
+
+    private void set_cursor_for_nob (int grabbed_id) {
+        switch (grabbed_id) {
+            case -1:
+                set_cursor (Gdk.CursorType.ARROW);
+                break;
+            case 0:
+                set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
+                break;
+            case 1:
+                set_cursor (Gdk.CursorType.TOP_SIDE);
+                break;
+            case 2:
+                set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
+                break;
+            case 3:
+                set_cursor (Gdk.CursorType.RIGHT_SIDE);
+                break;
+            case 4:
+                set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
+                break;
+            case 5:
+                set_cursor (Gdk.CursorType.BOTTOM_SIDE);
+                break;
+            case 6:
+                set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
+                break;
+            case 7:
+                set_cursor (Gdk.CursorType.LEFT_SIDE);
+                break;
         }
     }
 

@@ -46,7 +46,7 @@ public class Phi.Application : Granite.Application {
 
         canvas = new Phi.ResponsiveCanvas ();
         canvas.set_size_request (600, 600);
-        canvas.set_scale (1.232412);
+        canvas.set_scale (1);
         canvas.set_bounds (0, 0, 10000, 10000);
 
         var root = canvas.get_root_item ();
