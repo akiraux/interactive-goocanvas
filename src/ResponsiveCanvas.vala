@@ -122,10 +122,10 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         delta_x = (event.x - event_x_root) / current_scale;
         delta_y = (event.y - event_y_root) / current_scale;
 
-        var item = ((Goo.CanvasItemSimple) selected_item);
-        var stroke = item.line_width;
-        var width = item.bounds.x2 - item.bounds.x1 + stroke;
-        var height = item.bounds.y2 - item.bounds.y1 + stroke;
+        //  var item = ((Goo.CanvasItemSimple) selected_item);
+        //  var stroke = item.line_width;
+        //  var width = item.bounds.x2 - item.bounds.x1 + stroke;
+        //  var height = item.bounds.y2 - item.bounds.y1 + stroke;
 
         switch (holding_id) {
             case -1: // Moving
