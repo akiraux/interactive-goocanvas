@@ -63,6 +63,7 @@ public class Phi.Application : Granite.Application {
             "line-width", 5.0,
             "stroke-color", "#64baff",
             "fill-color", "#3689e6");
+
         rect2.set ("parent", root);
 
         var rect3 = new Goo.CanvasRect (null, 0, 0, 64, 64,
@@ -71,6 +72,7 @@ public class Phi.Application : Granite.Application {
             "line-width", 5.0,
             "stroke-color", "#9bdb4d",
             "fill-color", "#68b723");
+
         rect3.set ("parent", root);
 
         var text = new Goo.CanvasText (null, "Add text here", 20, 20, 200, Goo.CanvasAnchorType.NW, "font", "Open Sans 18");

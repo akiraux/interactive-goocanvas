@@ -215,19 +215,13 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return;
         }
 
+        double x, y, width, height;
+        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+
         var item = (target as Goo.CanvasItemSimple);
-        double width;
-        double height;
-        double x;
-        double y;
+        var stroke = item.line_width;
 
         var line_width = 1.0 / current_scale;
-        var stroke = item.line_width;
-        target.get ("width", out width);
-        target.get ("height", out height);
-        target.get ("x", out x);
-        target.get ("y", out y);
-
         var real_x = x - (line_width * 2);
         var real_y = y - (line_width * 2);
         var real_width = width + stroke - line_width;
@@ -417,7 +411,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     private void set_cursor (Gdk.CursorType cursor_type) {
         var cursor = new Gdk.Cursor.for_display (Gdk.Display.get_default (), cursor_type);
-        get_window ().get_screen ().get_root_window ().set_cursor (cursor);
+        get_window ().set_cursor (cursor);
     }
 
     //  // To make it so items can't become imposible to grab. TODOs
