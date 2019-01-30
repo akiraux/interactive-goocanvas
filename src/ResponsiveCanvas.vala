@@ -46,7 +46,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
 
     private weak Goo.CanvasItem? hovered_item;
-    private weak Goo.CanvasRect? hover_effect;
+    private Goo.CanvasRect? hover_effect;
 
     private bool holding;
     private double event_x_root;
@@ -88,7 +88,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 }
 
                 add_select_effect (clicked_item);
-                //  grab_focus (clicked_item);
+                grab_focus (clicked_item);
 
                 selected_item = clicked_item;
                 holding_id = -1;
@@ -97,7 +97,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             }
         } else {
             remove_select_effect ();
-            //  grab_focus (get_root_item ());
+            grab_focus (get_root_item ());
         }
 
         return true;
@@ -113,7 +113,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         }
 
         item_moved (selected_item);
-        //  add_hover_effect (selected_item);
+        add_hover_effect (selected_item);
 
         delta_x = 0;
         delta_y = 0;
@@ -123,7 +123,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     public override bool motion_notify_event (Gdk.EventMotion event) {
         if (!holding) {
-            //  motion_hover_event (event);
+            motion_hover_event (event);
             return false;
         }
 
@@ -137,8 +137,6 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         switch (holding_id) {
             case -1: // Moving
-                //  ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
-                //  ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
                 selected_item.set ("x", delta_x + start_x);
                 selected_item.set ("y", delta_y + start_y);
 
@@ -184,31 +182,33 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             //      break;
         }
 
-        //  update_nub_position (holding_id, selected_item);
+        update_nub_position (holding_id, selected_item);
 
         return false;
     }
 
-    //  private void motion_hover_event (Gdk.EventMotion event) {
-    //      hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), true);
+    private void motion_hover_event (Gdk.EventMotion event) {
+        hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), true);
 
-    //      if (!(hovered_item is Goo.CanvasItem)) {
-    //          remove_hover_effect ();
-    //          return;
-    //      }
+        if (!(hovered_item is Goo.CanvasItemSimple)) {
+            remove_hover_effect ();
+            return;
+        }
 
-    //      add_hover_effect (hovered_item);
+        add_hover_effect (hovered_item);
 
-    //      if ((hover_x != (hovered_item as Goo.CanvasItemSimple).x
-    //          || hover_y != (hovered_item as Goo.CanvasItemSimple).y)
-    //          && hover_effect != hovered_item
-    //          ) {
-    //          remove_hover_effect ();
-    //      }
+        double check_x;
+        double check_y;
+        hovered_item.get ("x", out check_x);
+        hovered_item.get ("y", out check_y);
 
-    //      hover_x = (hovered_item as Goo.CanvasItemSimple).x;
-    //      hover_y = (hovered_item as Goo.CanvasItemSimple).y;
-    //  }
+        if ((hover_x != check_x || hover_y != check_y) && hover_effect != hovered_item) {
+            remove_hover_effect ();
+        }
+
+        hover_x = check_x;
+        hover_y = check_y;
+    }
 
     public void add_select_effect (Goo.CanvasItem? target) {
         if (target == null || target == select_effect) {
@@ -261,38 +261,49 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         select_effect.remove ();
         select_effect = null;
+        selected_item = null;
 
         for (int i = 0; i < 8; i++) {
             nobs[i].remove ();
         }
     }
 
-    //  private void add_hover_effect (Goo.CanvasItem? target) {
-    //      if (target == null || hover_effect != null || target == selected_item || target == select_effect) {
-    //          return;
-    //      }
+    private void add_hover_effect (Goo.CanvasItem? target) {
+        if (target == null || hover_effect != null || target == selected_item || target == select_effect) {
+            return;
+        }
 
-    //      if ((target as Goo.CanvasItemSimple) in nobs) {
-    //          set_cursor_for_nob (get_grabbed_id (target));
-    //          return;
-    //      }
+        if ((target as Goo.CanvasItemSimple) in nobs) {
+            set_cursor_for_nob (get_grabbed_id (target));
+            return;
+        }
 
-    //      var item = (target as Goo.CanvasItemSimple);
+        var item = (target as Goo.CanvasItemSimple);
+        double width;
+        double height;
+        double x;
+        double y;
 
-    //      var line_width = 2.0 / get_scale ();
-    //      var stroke = item.line_width;
-    //      var x = item.x - stroke;
-    //      var y = item.y - stroke;
-    //      var width = item.bounds.x2 - item.bounds.x1 + stroke;
-    //      var height = item.bounds.y2 - item.bounds.y1 + stroke;
+        var line_width = 2.0 / get_scale ();
+        var stroke = item.line_width;
+        target.get ("width", out width);
+        target.get ("height", out height);
+        target.get ("x", out x);
+        target.get ("y", out y);
 
-    //      hover_effect = Goo.CanvasRect.create (get_root_item (), x, y, width, height,
-    //                                 "line-width", line_width,
-    //                                 "stroke-color", "#41c9fd"
-    //                                 );
+        var real_x = x - (line_width * 2);
+        var real_y = y - (line_width * 2);
+        var real_width = width + stroke + (line_width * 2);
+        var real_height = height + stroke + (line_width * 2);
 
-    //      hover_effect.can_focus = false;
-    //  }
+        hover_effect = new Goo.CanvasRect (null, real_x, real_y, real_width, real_height,
+                                   "line-width", line_width,
+                                   "stroke-color", "#41c9fd", null
+                                   );
+        hover_effect.set ("parent", get_root_item ());
+
+        hover_effect.can_focus = false;
+    }
 
     private void remove_hover_effect () {
         set_cursor (Gdk.CursorType.ARROW);
@@ -354,7 +365,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         //  double x;
         //  double y;
 
-        var line_width = 1.0 / current_scale;
+        //  var line_width = 1.0 / current_scale;
         var stroke = (item.line_width / 2);
         selected_item.get ("width", out width);
         selected_item.get ("height", out height);
