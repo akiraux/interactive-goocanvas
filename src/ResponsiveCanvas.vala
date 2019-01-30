@@ -83,8 +83,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             if (clicked_id == -1) { // Non-nub was clicked
                 remove_select_effect ();
                 if (clicked_item is Goo.CanvasItemSimple) {
-                    clicked_item.get("x", out start_x);
-                    clicked_item.get("y", out start_y);
+                    clicked_item.get ("x", out start_x, "y", out start_y);
                 }
 
                 add_select_effect (clicked_item);
@@ -137,12 +136,11 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         switch (holding_id) {
             case -1: // Moving
-                selected_item.set ("x", delta_x + start_x);
-                selected_item.set ("y", delta_y + start_y);
+                selected_item.set ("x", delta_x + start_x, "y", delta_y + start_y);
 
                 // Bounding box
-                select_effect.set ("x", delta_x + start_x - (((Goo.CanvasItemSimple) select_effect).line_width) * 2);
-                select_effect.set ("y", delta_y + start_y - (((Goo.CanvasItemSimple) select_effect).line_width) * 2);
+                select_effect.set ("x", delta_x + start_x - (((Goo.CanvasItemSimple) select_effect).line_width) * 2,
+                                    "y", delta_y + start_y - (((Goo.CanvasItemSimple) select_effect).line_width) * 2);
 
                 //  debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
@@ -199,8 +197,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         double check_x;
         double check_y;
-        hovered_item.get ("x", out check_x);
-        hovered_item.get ("y", out check_y);
+        hovered_item.get ("x", out check_x, "y", out check_y);
 
         if ((hover_x != check_x || hover_y != check_y) && hover_effect != hovered_item) {
             remove_hover_effect ();
@@ -215,22 +212,22 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return;
         }
 
-        double x, y, width, height;
-        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+        double x, y;
+        target.get ("x", out x, "y", out y);
 
         var item = (target as Goo.CanvasItemSimple);
-        var stroke = item.line_width;
 
         var line_width = 1.0 / current_scale;
         var real_x = x - (line_width * 2);
         var real_y = y - (line_width * 2);
-        var real_width = width + stroke - line_width;
-        var real_height = height + stroke - line_width;
+        var width = item.bounds.x2 - item.bounds.x1;
+        var height = item.bounds.y2 - item.bounds.y1;
 
-        select_effect = new Goo.CanvasRect (null, real_x, real_y, real_width, real_height,
+        select_effect = new Goo.CanvasRect (null, real_x, real_y, width, height,
                                    "line-width", line_width,
                                    "stroke-color", "#666", null
                                    );
+
         select_effect.set ("parent", get_root_item ());
 
         nob_size = 10 / current_scale;
@@ -272,25 +269,19 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return;
         }
 
+        double x, y;
+        target.get ("x", out x, "y", out y);
+
         var item = (target as Goo.CanvasItemSimple);
-        double width;
-        double height;
-        double x;
-        double y;
 
         var line_width = 2.0 / get_scale ();
         var stroke = item.line_width;
-        target.get ("width", out width);
-        target.get ("height", out height);
-        target.get ("x", out x);
-        target.get ("y", out y);
-
         var real_x = x - (line_width * 2);
         var real_y = y - (line_width * 2);
-        var real_width = width + stroke + (line_width * 2);
-        var real_height = height + stroke + (line_width * 2);
+        var width = item.bounds.x2 - item.bounds.x1 + stroke - line_width;
+        var height = item.bounds.y2 - item.bounds.y1 + stroke - line_width;
 
-        hover_effect = new Goo.CanvasRect (null, real_x, real_y, real_width, real_height,
+        hover_effect = new Goo.CanvasRect (null, real_x, real_y, width, height,
                                    "line-width", line_width,
                                    "stroke-color", "#41c9fd", null
                                    );
@@ -356,57 +347,41 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         var item = (selected_item as Goo.CanvasItemSimple);
         double width;
         double height;
-        //  double x;
-        //  double y;
 
-        //  var line_width = 1.0 / current_scale;
         var stroke = (item.line_width / 2);
-        selected_item.get ("width", out width);
-        selected_item.get ("height", out height);
-        //  target.get ("x", out x);
-        //  target.get ("y", out y);
-
-        //  var real_x = x - (line_width * 2);
-        //  var real_y = y - (line_width * 2);
-        //  var real_width = width + stroke - line_width;
-        //  var real_height = height + stroke - line_width;
-
-        //  var item = ((Goo.CanvasItemSimple) selected_item);
-        //  var stroke = item.line_width;
-        //  var width = item.bounds.x2 - item.bounds.x1 + stroke;
-        //  var height = item.bounds.y2 - item.bounds.y1 + stroke;
+        selected_item.get ("width", out width, "height", out height);
 
         // TOP LEFT nob
-        nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke);
-        nobs[0].set ("y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // TOP CENTER nob
-        nobs[1].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke);
-        nobs[1].set ("y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[1].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // TOP RIGHT nob
-        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke);
-        nobs[2].set ("y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // RIGHT CENTER nob
-        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke);
-        nobs[3].set ("y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
 
         // BOTTOM RIGHT nob
-        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke);
-        nobs[4].set ("y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // BOTTOM CENTER nob
-        nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke);
-        nobs[5].set ("y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // BOTTOM LEFT nob
-        nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke);
-        nobs[6].set ("y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // LEFT CENTER nob
-        nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke);
-        nobs[7].set ("y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {
