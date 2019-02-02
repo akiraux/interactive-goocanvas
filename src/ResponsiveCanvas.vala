@@ -43,7 +43,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         // -1 if no nub is grabbed
     */
-    private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[8];
+    private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[9];
 
     private weak Goo.CanvasItem? hovered_item;
     private Goo.CanvasRect? hover_effect;
@@ -232,9 +232,12 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
         nob_size = 10 / current_scale;
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 9; i++) {
+            var radius = i == 8 ? nob_size : 0;
             nobs[i] = new Goo.CanvasRect (null, 0, 0, nob_size, nob_size,
                 "line-width", line_width,
+                "radius-x", radius,
+                "radius-y", radius,
                 "stroke-color", "#41c9fd",
                 "fill-color", "#fff", null
             );
@@ -254,7 +257,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         select_effect = null;
         selected_item = null;
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 9; i++) {
             nobs[i].remove ();
         }
     }
@@ -302,7 +305,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     }
 
     private int get_grabbed_id (Goo.CanvasItem? target) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 9; i++) {
             if (target == nobs[i]) return i;
         }
 
@@ -338,6 +341,9 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             case 7:
                 set_cursor (Gdk.CursorType.LEFT_SIDE);
                 break;
+            case 8:
+                set_cursor (Gdk.CursorType.ICON);
+                break;
         }
     }
 
@@ -345,11 +351,10 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     // TODO: concider item rotation into account
     private void update_nub_position (int grabbed_nub, Goo.CanvasItem selected_item) {
         var item = (selected_item as Goo.CanvasItemSimple);
-        double width;
-        double height;
 
         var stroke = (item.line_width / 2);
-        selected_item.get ("width", out width, "height", out height);
+        var width = item.bounds.x2 - item.bounds.x1;
+        var height = item.bounds.y2 - item.bounds.y1;
 
         // TOP LEFT nob
         nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
@@ -360,28 +365,32 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                     "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // TOP RIGHT nob
-        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
                     "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // RIGHT CENTER nob
-        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
                     "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
 
         // BOTTOM RIGHT nob
-        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
 
         // BOTTOM CENTER nob
         nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
 
         // BOTTOM LEFT nob
         nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
 
         // LEFT CENTER nob
         nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
                     "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+
+        // ROTATE nob
+        nobs[8].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - 40);
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {
