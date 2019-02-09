@@ -37,7 +37,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private Goo.CanvasRect select_effect;
 
      /*
-        Grabber Pos: 0 1 2
+        Grabber Pos:   8
+                     0 1 2
                      7   3
                      6 5 4
 
@@ -53,6 +54,8 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private double event_y_root;
     private double start_x;
     private double start_y;
+    private double start_w;
+    private double start_h;
     private double delta_x;
     private double delta_y;
     private double hover_x;
@@ -74,7 +77,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         event_x_root = event.x;
         event_y_root = event.y;
 
-       var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
+        var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
         if (clicked_item != null) {
             var clicked_id = get_grabbed_id (clicked_item);
@@ -83,7 +86,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             if (clicked_id == -1) { // Non-nub was clicked
                 remove_select_effect ();
                 if (clicked_item is Goo.CanvasItemSimple) {
-                    clicked_item.get ("x", out start_x, "y", out start_y);
+                    clicked_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
                 }
 
                 add_select_effect (clicked_item);
@@ -92,6 +95,7 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                 selected_item = clicked_item;
                 holding_id = -1;
             } else { // nub was clicked
+                selected_item.get ("x", out start_x, "y", out start_y);
                 holding_id = clicked_id;
             }
         } else {
@@ -111,11 +115,13 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return false;
         }
 
+        selected_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
         item_moved (selected_item);
         add_hover_effect (selected_item);
 
         delta_x = 0;
         delta_y = 0;
+
 
         return false;
     }
@@ -129,31 +135,24 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         delta_x = (event.x - event_x_root) / current_scale;
         delta_y = (event.y - event_y_root) / current_scale;
 
-        //  var item = ((Goo.CanvasItemSimple) selected_item);
-        //  var stroke = item.line_width;
-        //  var width = item.bounds.x2 - item.bounds.x1 + stroke;
-        //  var height = item.bounds.y2 - item.bounds.y1 + stroke;
-
         switch (holding_id) {
             case -1: // Moving
                 selected_item.set ("x", delta_x + start_x, "y", delta_y + start_y);
-
-                // Bounding box
-                select_effect.set ("x", delta_x + start_x - (((Goo.CanvasItemSimple) select_effect).line_width) * 2,
-                                    "y", delta_y + start_y - (((Goo.CanvasItemSimple) select_effect).line_width) * 2);
-
-                //  debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
                 break;
             case 0: // Top left
-                //  delta_x = fix_position (x, real_width, start_w);
-                //  delta_y = fix_position (y, real_height, start_h);
-                //  real_height = fix_size ((int) (start_h - 1 / current_scale * y));
-                //  real_width = fix_size ((int) (start_w - 1 / current_scale * x));
+                var new_x = delta_x + start_x;
+                var new_y = delta_y + start_y;
+                var new_width = start_w - delta_x;
+                var new_height = start_h - delta_y;
+
+                selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
                 break;
-            //  case 1: // Top
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-            //      break;
+            case 1: // Top
+                var new_y = delta_y + start_y;
+                var new_height = start_h - delta_y;
+
+                selected_item.set ("x", start_x, "y", new_y, "width", start_w, "height", new_height);
+                break;
             //  case 2: // Top right
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
@@ -174,13 +173,16 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
-            //  case 7: // Left
-            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      break;
+            case 7: // Left
+                var new_x = delta_x + start_x;
+                var new_width = start_w - delta_x;
+
+                selected_item.set ("x", new_x, "y", start_y, "width", new_width, "height", start_h);
+                break;
         }
 
-        update_nub_position (holding_id, selected_item);
+        update_nub_position (selected_item);
+        update_select_effect (selected_item);
 
         return false;
     }
@@ -244,8 +246,25 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             nobs[i].set ("parent", get_root_item ());
         }
 
-        update_nub_position (-1, target);
+        update_nub_position (target);
         select_effect.can_focus = false;
+    }
+
+    private void update_select_effect (Goo.CanvasItem? target) {
+        if (target == null || target == select_effect) {
+            return;
+        }
+
+        double x, y, width, height;
+        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+
+        var item = (target as Goo.CanvasItemSimple);
+        var stroke = (item.line_width / 2);
+        var line_width = 1.0 / current_scale;
+        var real_x = x - (line_width * 2);
+        var real_y = y - (line_width * 2);
+
+        select_effect.set ("x", real_x, "y", real_y, "width", width + (stroke * 2), "height", height + (stroke * 2));
     }
 
     private void remove_select_effect () {
@@ -349,12 +368,12 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
 
     // Updates all the nub's position arround the selected item, except for the grabbed nub
     // TODO: concider item rotation into account
-    private void update_nub_position (int grabbed_nub, Goo.CanvasItem selected_item) {
-        var item = (selected_item as Goo.CanvasItemSimple);
+    private void update_nub_position (Goo.CanvasItem target) {
+        var item = (target as Goo.CanvasItemSimple);
 
         var stroke = (item.line_width / 2);
-        var width = item.bounds.x2 - item.bounds.x1;
-        var height = item.bounds.y2 - item.bounds.y1;
+        double x, y, width, height;
+        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
 
         // TOP LEFT nob
         nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
@@ -365,24 +384,24 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
                     "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // TOP RIGHT nob
-        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
+        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
                     "y", delta_y + start_y - (nob_size / 2) - stroke);
 
         // RIGHT CENTER nob
-        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
+        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
                     "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
 
         // BOTTOM RIGHT nob
-        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
+        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // BOTTOM CENTER nob
         nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // BOTTOM LEFT nob
         nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) - stroke);
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
 
         // LEFT CENTER nob
         nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
