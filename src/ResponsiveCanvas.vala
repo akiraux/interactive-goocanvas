@@ -19,7 +19,7 @@
 * Authored by: Felipe Escoto <felescoto95@hotmail.com>
 */
 
-public class Phi.ResponsiveCanvas : Goo.Canvas {
+public class GCav.ResponsiveCanvas : Goo.Canvas {
     private const int MIN_SIZE = 40;
 
     /**

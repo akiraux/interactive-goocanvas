@@ -21,6 +21,7 @@ c_args = [
 executable(
     'com.github.akiraux.interactive-goocanvas',
     'src/Application.vala',
+    'src/HeaderBar.vala',
     'src/Window.vala',
     'src/ResponsiveCanvas.vala',
     c_args: c_args,

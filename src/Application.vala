@@ -1,5 +1,6 @@
 /*
 * Copyright (c) 2018 Felipe Escoto (https://github.com/Philip-Scott)
+* Copyright (c) 2019 Akira UX (https://github.com/akiraux)
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU General Public
@@ -17,9 +18,10 @@
 * Boston, MA 02111-1307, USA.
 *
 * Authored by: Felipe Escoto <felescoto95@hotmail.com>
+* Authored by: Alessandro Castellani <castellani.ale@gmail.com>
 */
 
-public class Phi.Application : Granite.Application {
+public class GCav.Application : Granite.Application {
     public const string PROGRAM_ID = "com.github.akiraux.interactive-goocanvas";
     public const string PROGRAM_NAME = "CanvasDemo";
 
@@ -37,17 +39,20 @@ public class Phi.Application : Granite.Application {
     public static Gtk.Window? window = null;
     public static Gtk.Grid grid;
 
-    Goo.Canvas canvas;
+    GCav.ResponsiveCanvas canvas;
     bool set_color = false;
 
     public override void activate () {
         var window = new Gtk.Window ();
         this.add_window (window);
 
-        canvas = new Phi.ResponsiveCanvas ();
-        canvas.set_size_request (600, 600);
+        canvas = new GCav.ResponsiveCanvas ();
+        canvas.set_size_request (1200, 800);
         canvas.set_scale (1);
         canvas.set_bounds (0, 0, 10000, 10000);
+
+        var headerbar = new GCav.HeaderBar (canvas);
+        window.set_titlebar (headerbar);
 
         var root = canvas.get_root_item ();
 
@@ -93,7 +98,7 @@ public class Phi.Application : Granite.Application {
         Environment.set_application_name (PROGRAM_NAME);
         Environment.set_prgname (PROGRAM_NAME);
 
-        var application = new Phi.Application ();
+        var application = new GCav.Application ();
 
         return application.run (args);
     }
