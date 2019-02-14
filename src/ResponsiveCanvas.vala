@@ -33,8 +33,8 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
      */
     public signal void item_moved (Goo.CanvasItem? item);
 
-    public weak Goo.CanvasItem? selected_item;
-    private Goo.CanvasRect select_effect;
+    public Goo.CanvasItem? selected_item;
+    public Goo.CanvasRect select_effect;
 
      /*
         Grabber Pos:   8
@@ -209,7 +209,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         hover_y = check_y;
     }
 
-    public void add_select_effect (Goo.CanvasItem? target) {
+    private void add_select_effect (Goo.CanvasItem? target) {
         if (target == null || target == select_effect) {
             return;
         }
@@ -279,6 +279,22 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         for (int i = 0; i < 9; i++) {
             nobs[i].remove ();
         }
+    }
+
+    public void reset_select () {
+        if (selected_item == null && select_effect == null) {
+            return;
+        }
+
+        select_effect.remove ();
+        select_effect = null;
+
+        for (int i = 0; i < 9; i++) {
+            nobs[i].remove ();
+        }
+
+        current_scale = get_scale ();
+        add_select_effect (selected_item);
     }
 
     private void add_hover_effect (Goo.CanvasItem? target) {
@@ -408,8 +424,13 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
                     "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
 
         // ROTATE nob
+        double distance = 40;
+        if (current_scale < 1) {
+            distance = 40 + ((40 - (40 * current_scale)) * 2);
+        }
+
         nobs[8].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - 40);
+                    "y", delta_y + start_y - (nob_size / 2) - distance);
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {

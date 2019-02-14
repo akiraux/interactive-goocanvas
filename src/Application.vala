@@ -40,7 +40,7 @@ public class GCav.Application : Granite.Application {
     public static Gtk.Grid grid;
 
     GCav.ResponsiveCanvas canvas;
-    bool set_color = false;
+    //  bool set_color = false;
 
     public override void activate () {
         var window = new Gtk.Window ();

@@ -69,6 +69,7 @@ public class GCav.HeaderBar : Gtk.HeaderBar {
         zoom_out_button.sensitive = true;
         zoom_default_button.label = "%.0f%%".printf (zoom);
         canvas.set_scale (canvas.get_scale () - 0.1);
+        canvas.reset_select ();
     }
 
     public void zoom_in () {
@@ -81,6 +82,7 @@ public class GCav.HeaderBar : Gtk.HeaderBar {
         zoom_in_button.sensitive = true;
         zoom_default_button.label = "%.0f%%".printf (zoom);
         canvas.set_scale (canvas.get_scale () + 0.1);
+        canvas.reset_select ();
     }
 
     public void zoom_reset () {
@@ -88,5 +90,6 @@ public class GCav.HeaderBar : Gtk.HeaderBar {
         zoom_out_button.sensitive = true;
         zoom_default_button.label = "100%";
         canvas.set_scale (1);
+        canvas.reset_select ();
     }
 }
