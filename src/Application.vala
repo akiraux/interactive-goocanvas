@@ -20,7 +20,7 @@
 */
 
 public class Phi.Application : Granite.Application {
-    public const string PROGRAM_ID = "com.github.philip-scott.canvas-demo";
+    public const string PROGRAM_ID = "com.github.akiraux.interactive-goocanvas";
     public const string PROGRAM_NAME = "CanvasDemo";
 
     construct {

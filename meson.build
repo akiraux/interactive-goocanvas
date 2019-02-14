@@ -1,4 +1,4 @@
-project('com.github.philip-scott.canvas-demo', ['vala', 'c'],
+project('com.github.akiraux.interactive-goocanvas', ['vala', 'c'],
     version: '0.2.0'
 )
 
@@ -19,7 +19,7 @@ c_args = [
 ]
 
 executable(
-    'com.github.philip-scott.canvas-demo',
+    'com.github.akiraux.interactive-goocanvas',
     'src/Application.vala',
     'src/Window.vala',
     'src/ResponsiveCanvas.vala',
