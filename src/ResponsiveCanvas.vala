@@ -20,7 +20,8 @@
 */
 
 public class GCav.ResponsiveCanvas : Goo.Canvas {
-    private const int MIN_SIZE = 40;
+    private const int MIN_SIZE = 1;
+    private const int MIN_POS = 10;
 
     /**
      * Signal triggered when item was clicked by the user
@@ -137,15 +138,22 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
         switch (holding_id) {
             case -1: // Moving
-                selected_item.set ("x", delta_x + start_x, "y", delta_y + start_y);
+                var new_x = delta_x + start_x;
+                var new_y = fix_position ((delta_y + start_y), start_h);
+
+                selected_item.set ("x", new_x, "y", new_y);
+
+                debug ("%f - (%f:%f)", new_x, (delta_y + start_y), new_y);
                 break;
             case 0: // Top left
-                var new_x = delta_x + start_x;
-                var new_y = delta_y + start_y;
-                var new_width = start_w - delta_x;
-                var new_height = start_h - delta_y;
+                var new_x = fix_size (delta_x + start_x);
+                var new_y = fix_size (delta_y + start_y);
+                var new_width = fix_size (start_w - delta_x);
+                var new_height = fix_size (start_h - delta_y);
 
                 selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
+
+                debug ("%f - %f", new_width, new_height);
                 break;
             case 1: // Top
                 var new_y = delta_y + start_y;
@@ -438,17 +446,17 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         get_window ().set_cursor (cursor);
     }
 
-    //  // To make it so items can't become imposible to grab. TODOs
-    //  private int fix_position (int delta, int length, int initial_length) {
-    //      var max_delta = (initial_length - MIN_SIZE) * current_scale;
-    //      if (delta < max_delta) {
-    //          return delta;
-    //      } else {
-    //          return (int) max_delta;
-    //      }
-    //  }
+    // To make it so items can't become imposible to grab. TODOs
+    private double fix_position (double delta, double initial_size) {
+        var max_delta = (initial_size - MIN_POS) * current_scale;
+        if (delta < max_delta) {
+            return Math.round (delta);
+        } else {
+            return Math.round (max_delta);
+        }
+    }
 
-    //  private int fix_size (int size) {
-    //      return size > MIN_SIZE ? size : MIN_SIZE;
-    //  }
+    private double fix_size (double size) {
+        return size > MIN_SIZE ? Math.round (size) : MIN_SIZE;
+    }
 }

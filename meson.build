@@ -10,9 +10,11 @@ conf.set_quoted('GETTEXT_PACKAGE', meson.project_name())
 configure_file(output: 'config.h', configuration: conf)
 config_h_dir = include_directories('.')
 
+cc = meson.get_compiler('c')
+m_dep = cc.find_library('m', required: true)
+
 add_project_arguments(['--vapidir', join_paths(meson.current_source_dir(), 'vapi')],
                       language: 'vala')
-
 
 c_args = [
   '-include', 'config.h',
@@ -33,6 +35,7 @@ executable(
         dependency('libsoup-2.4'),
         dependency('libsecret-1'),
         dependency('goocanvas-2.0'),
+        m_dep,
     ],
     install : true
 )
