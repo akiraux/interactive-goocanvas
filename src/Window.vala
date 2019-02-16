@@ -19,13 +19,13 @@
 * Authored by: Felipe Escoto <felescoto95@hotmail.com>
 */
 
-public class ShareUp.Window : Gtk.Window {
+public class GCav.Window : Gtk.Window {
 
     public Window (Gtk.Application app) {
         Object (application: app);
     }
 
     construct {
-
+        
     }
 }

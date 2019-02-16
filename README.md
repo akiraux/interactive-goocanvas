@@ -19,7 +19,7 @@ Run `meson build` to configure the build environment and then change to the buil
     cd build
     ninja
 
-To install, use `ninja install`, then execute with `com.github.philip-scott.canvas-demo`
+To install, use `ninja install`, then execute with `com.github.akiraux.interactive-goocanvas`
 
     sudo ninja install
-    com.github.philip-scott.canvas-demo
+    com.github.akiraux.interactive-goocanvas

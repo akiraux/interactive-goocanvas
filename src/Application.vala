@@ -1,5 +1,6 @@
 /*
 * Copyright (c) 2018 Felipe Escoto (https://github.com/Philip-Scott)
+* Copyright (c) 2019 Akira UX (https://github.com/akiraux)
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU General Public
@@ -17,10 +18,11 @@
 * Boston, MA 02111-1307, USA.
 *
 * Authored by: Felipe Escoto <felescoto95@hotmail.com>
+* Authored by: Alessandro Castellani <castellani.ale@gmail.com>
 */
 
-public class Phi.Application : Granite.Application {
-    public const string PROGRAM_ID = "com.github.philip-scott.canvas-demo";
+public class GCav.Application : Granite.Application {
+    public const string PROGRAM_ID = "com.github.akiraux.interactive-goocanvas";
     public const string PROGRAM_NAME = "CanvasDemo";
 
     construct {
@@ -37,40 +39,49 @@ public class Phi.Application : Granite.Application {
     public static Gtk.Window? window = null;
     public static Gtk.Grid grid;
 
-    Goo.Canvas canvas;
-    bool set_color = false;
+    GCav.ResponsiveCanvas canvas;
+    //  bool set_color = false;
 
     public override void activate () {
         var window = new Gtk.Window ();
         this.add_window (window);
 
-        canvas = new Phi.ResponsiveCanvas ();
-        canvas.set_size_request (600, 600);
-        canvas.set_scale (1.232412);
+        canvas = new GCav.ResponsiveCanvas ();
+        canvas.set_size_request (1200, 800);
+        canvas.set_scale (1);
         canvas.set_bounds (0, 0, 10000, 10000);
+
+        var headerbar = new GCav.HeaderBar (canvas);
+        window.set_titlebar (headerbar);
 
         var root = canvas.get_root_item ();
 
-        var rect_item = Goo.CanvasRect.create (root, 100, 100, 400, 400,
+        var rect = new Goo.CanvasRect (null, 100.0, 100.0, 400.0, 400.0,
                                    "line-width", 5.0,
                                    "radius-x", 100.0,
                                    "radius-y", 100.0,
                                    "stroke-color", "#f37329",
-                                   "fill-color", "#ffa154");
+                                   "fill-color", "#ffa154", null);
+        rect.set ("parent", root);
 
-        rect_item = Goo.CanvasRect.create (root, 50, 100, 200, 100,
+        var rect2 = new Goo.CanvasRect (null, 50, 100, 200, 100,
             "line-width", 5.0,
             "stroke-color", "#64baff",
             "fill-color", "#3689e6");
 
-        rect_item = Goo.CanvasRect.create (root, 0, 0, 64, 64,
+        rect2.set ("parent", root);
+
+        var rect3 = new Goo.CanvasRect (null, 0, 0, 64, 64,
             "radius-x", 32.0,
             "radius-y", 32.0,
             "line-width", 5.0,
             "stroke-color", "#9bdb4d",
             "fill-color", "#68b723");
 
-        var text = Goo.CanvasText.create (root, "Add text here", 20, 20, 200, Goo.CanvasAnchorType.NW, "font", "Open Sans 18");
+        rect3.set ("parent", root);
+
+        var text = new Goo.CanvasText (null, "Add text here", 20, 20, 200, Goo.CanvasAnchorType.NW, "font", "Open Sans 18");
+        text.set ("parent", root);
 
         window.add (canvas);
         window.show_all ();
@@ -87,7 +98,7 @@ public class Phi.Application : Granite.Application {
         Environment.set_application_name (PROGRAM_NAME);
         Environment.set_prgname (PROGRAM_NAME);
 
-        var application = new Phi.Application ();
+        var application = new GCav.Application ();
 
         return application.run (args);
     }

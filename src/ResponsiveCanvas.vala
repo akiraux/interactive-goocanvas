@@ -19,8 +19,9 @@
 * Authored by: Felipe Escoto <felescoto95@hotmail.com>
 */
 
-public class Phi.ResponsiveCanvas : Goo.Canvas {
-    private const int MIN_SIZE = 40;
+public class GCav.ResponsiveCanvas : Goo.Canvas {
+    private const int MIN_SIZE = 1;
+    private const int MIN_POS = 10;
 
     /**
      * Signal triggered when item was clicked by the user
@@ -33,21 +34,36 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
      */
     public signal void item_moved (Goo.CanvasItem? item);
 
-    public weak Goo.CanvasItem? selected_item;
-    public weak Goo.CanvasItem? hovered_item;
-    public weak Goo.CanvasRect? hover_effect;
+    public Goo.CanvasItem? selected_item;
+    public Goo.CanvasRect select_effect;
+
+     /*
+        Grabber Pos:   8
+                     0 1 2
+                     7   3
+                     6 5 4
+
+        // -1 if no nub is grabbed
+    */
+    private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[9];
+
+    private weak Goo.CanvasItem? hovered_item;
+    private Goo.CanvasRect? hover_effect;
 
     private bool holding;
     private double event_x_root;
     private double event_y_root;
     private double start_x;
     private double start_y;
+    private double start_w;
+    private double start_h;
     private double delta_x;
     private double delta_y;
     private double hover_x;
     private double hover_y;
+    private double nob_size;
     private double current_scale;
-    private int holding_id = 0;
+    private int holding_id = -1;
 
     construct {
         events |= Gdk.EventMask.BUTTON_PRESS_MASK;
@@ -62,15 +78,30 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         event_x_root = event.x;
         event_y_root = event.y;
 
-        selected_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
+        var clicked_item = get_item_at (event.x / current_scale, event.y / current_scale, true);
 
-        if (selected_item != null) {
-            if (selected_item is Goo.CanvasItemSimple) {
-                start_x = (selected_item as Goo.CanvasItemSimple).x;
-                start_y = (selected_item as Goo.CanvasItemSimple).y;
-            }
-
+        if (clicked_item != null) {
+            var clicked_id = get_grabbed_id (clicked_item);
             holding = true;
+
+            if (clicked_id == -1) { // Non-nub was clicked
+                remove_select_effect ();
+                if (clicked_item is Goo.CanvasItemSimple) {
+                    clicked_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
+                }
+
+                add_select_effect (clicked_item);
+                grab_focus (clicked_item);
+
+                selected_item = clicked_item;
+                holding_id = -1;
+            } else { // nub was clicked
+                selected_item.get ("x", out start_x, "y", out start_y);
+                holding_id = clicked_id;
+            }
+        } else {
+            remove_select_effect ();
+            grab_focus (get_root_item ());
         }
 
         return true;
@@ -85,11 +116,13 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
             return false;
         }
 
+        selected_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
         item_moved (selected_item);
         add_hover_effect (selected_item);
 
         delta_x = 0;
         delta_y = 0;
+
 
         return false;
     }
@@ -97,53 +130,67 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     public override bool motion_notify_event (Gdk.EventMotion event) {
         if (!holding) {
             motion_hover_event (event);
-
             return false;
         }
 
         delta_x = (event.x - event_x_root) / current_scale;
         delta_y = (event.y - event_y_root) / current_scale;
+
         switch (holding_id) {
-            case 0: // Moving
-                ((Goo.CanvasItemSimple) selected_item).x = delta_x + start_x;
-                ((Goo.CanvasItemSimple) selected_item).y = delta_y + start_y;
-                debug ("X:%f - Y:%f\n", ((Goo.CanvasItemSimple) selected_item).x, ((Goo.CanvasItemSimple) selected_item).y);
+            case -1: // Moving
+                var new_x = delta_x + start_x;
+                var new_y = fix_position ((delta_y + start_y), start_h);
+
+                selected_item.set ("x", new_x, "y", new_y);
+
+                debug ("%f - (%f:%f)", new_x, (delta_y + start_y), new_y);
                 break;
-            //  case 1: // Top left
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int) (start_h - 1 / current_scale * y));
-            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-            //      break;
-            //  case 2: // Top
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-            //      break;
-            //  case 3: // Top right
+            case 0: // Top left
+                var new_x = fix_size (delta_x + start_x);
+                var new_y = fix_size (delta_y + start_y);
+                var new_width = fix_size (start_w - delta_x);
+                var new_height = fix_size (start_h - delta_y);
+
+                selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
+
+                debug ("%f - %f", new_width, new_height);
+                break;
+            case 1: // Top
+                var new_y = delta_y + start_y;
+                var new_height = start_h - delta_y;
+
+                selected_item.set ("x", start_x, "y", new_y, "width", start_w, "height", new_height);
+                break;
+            //  case 2: // Top right
             //      delta_y = fix_position (y, real_height, start_h);
             //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 4: // Right
+            //  case 3: // Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      break;
-            //  case 5: // Bottom Right
+            //  case 4: // Bottom Right
             //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 6: // Bottom
+            //  case 5: // Bottom
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      break;
-            //  case 7: // Bottom left
+            //  case 6: // Bottom left
             //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
             //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
             //      delta_x = fix_position (x, real_width, start_w);
             //      break;
-            //  case 8: // Left
-            //      real_width = fix_size ((int) (start_w - 1 / current_scale * x));
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      break;
+            case 7: // Left
+                var new_x = delta_x + start_x;
+                var new_width = start_w - delta_x;
+
+                selected_item.set ("x", new_x, "y", start_y, "width", new_width, "height", start_h);
+                break;
         }
+
+        update_nub_position (selected_item);
+        update_select_effect (selected_item);
 
         return false;
     }
@@ -151,48 +198,147 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
     private void motion_hover_event (Gdk.EventMotion event) {
         hovered_item = get_item_at (event.x / get_scale (), event.y / get_scale (), true);
 
-        if (!(hovered_item is Goo.CanvasItem)) {
+        if (!(hovered_item is Goo.CanvasItemSimple)) {
             remove_hover_effect ();
             return;
         }
 
         add_hover_effect (hovered_item);
 
-        if ((hover_x != (hovered_item as Goo.CanvasItemSimple).x
-            || hover_y != (hovered_item as Goo.CanvasItemSimple).y)
-            && hover_effect != hovered_item
-            ) {
+        double check_x;
+        double check_y;
+        hovered_item.get ("x", out check_x, "y", out check_y);
+
+        if ((hover_x != check_x || hover_y != check_y) && hover_effect != hovered_item) {
             remove_hover_effect ();
         }
 
-        hover_x = (hovered_item as Goo.CanvasItemSimple).x;
-        hover_y = (hovered_item as Goo.CanvasItemSimple).y;
+        hover_x = check_x;
+        hover_y = check_y;
     }
 
-    private void add_hover_effect (Goo.CanvasItem? target) {
-        if (target == null || hover_effect != null) {
+    private void add_select_effect (Goo.CanvasItem? target) {
+        if (target == null || target == select_effect) {
             return;
         }
 
+        double x, y;
+        target.get ("x", out x, "y", out y);
+
         var item = (target as Goo.CanvasItemSimple);
 
-        var stroke = item.line_width;
-        var x = item.x - stroke;
-        var y = item.y - stroke;
-        var width = item.bounds.x2 - item.bounds.x1 + stroke;
-        var height = item.bounds.y2 - item.bounds.y1 + stroke;
+        var line_width = 1.0 / current_scale;
+        var real_x = x - (line_width * 2);
+        var real_y = y - (line_width * 2);
+        var width = item.bounds.x2 - item.bounds.x1;
+        var height = item.bounds.y2 - item.bounds.y1;
+
+        select_effect = new Goo.CanvasRect (null, real_x, real_y, width, height,
+                                   "line-width", line_width,
+                                   "stroke-color", "#666", null
+                                   );
+
+        select_effect.set ("parent", get_root_item ());
+
+        nob_size = 10 / current_scale;
+
+        for (int i = 0; i < 9; i++) {
+            var radius = i == 8 ? nob_size : 0;
+            nobs[i] = new Goo.CanvasRect (null, 0, 0, nob_size, nob_size,
+                "line-width", line_width,
+                "radius-x", radius,
+                "radius-y", radius,
+                "stroke-color", "#41c9fd",
+                "fill-color", "#fff", null
+            );
+            nobs[i].set ("parent", get_root_item ());
+        }
+
+        update_nub_position (target);
+        select_effect.can_focus = false;
+    }
+
+    private void update_select_effect (Goo.CanvasItem? target) {
+        if (target == null || target == select_effect) {
+            return;
+        }
+
+        double x, y, width, height;
+        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+
+        var item = (target as Goo.CanvasItemSimple);
+        var stroke = (item.line_width / 2);
+        var line_width = 1.0 / current_scale;
+        var real_x = x - (line_width * 2);
+        var real_y = y - (line_width * 2);
+
+        select_effect.set ("x", real_x, "y", real_y, "width", width + (stroke * 2), "height", height + (stroke * 2));
+    }
+
+    private void remove_select_effect () {
+        if (select_effect == null) {
+            return;
+        }
+
+        select_effect.remove ();
+        select_effect = null;
+        selected_item = null;
+
+        for (int i = 0; i < 9; i++) {
+            nobs[i].remove ();
+        }
+    }
+
+    public void reset_select () {
+        if (selected_item == null && select_effect == null) {
+            return;
+        }
+
+        select_effect.remove ();
+        select_effect = null;
+
+        for (int i = 0; i < 9; i++) {
+            nobs[i].remove ();
+        }
+
+        current_scale = get_scale ();
+        add_select_effect (selected_item);
+    }
+
+    private void add_hover_effect (Goo.CanvasItem? target) {
+        if (target == null || hover_effect != null || target == selected_item || target == select_effect) {
+            return;
+        }
+
+        if ((target as Goo.CanvasItemSimple) in nobs) {
+            set_cursor_for_nob (get_grabbed_id (target));
+            return;
+        }
+
+        double x, y;
+        target.get ("x", out x, "y", out y);
+
+        var item = (target as Goo.CanvasItemSimple);
 
         var line_width = 2.0 / get_scale ();
+        var stroke = item.line_width;
+        var real_x = x - (line_width * 2);
+        var real_y = y - (line_width * 2);
+        var width = item.bounds.x2 - item.bounds.x1 + stroke - line_width;
+        var height = item.bounds.y2 - item.bounds.y1 + stroke - line_width;
 
-        hover_effect = Goo.CanvasRect.create (get_root_item (), x, y, width, height,
-                                   "line-width", line_width, 
-                                   "stroke-color", "#41c9fd"
+        hover_effect = new Goo.CanvasRect (null, real_x, real_y, width, height,
+                                   "line-width", line_width,
+                                   "stroke-color", "#41c9fd", null
                                    );
+        hover_effect.set ("parent", get_root_item ());
 
         hover_effect.can_focus = false;
     }
 
     private void remove_hover_effect () {
+        set_cursor (Gdk.CursorType.ARROW);
+
         if (hover_effect == null) {
             return;
         }
@@ -201,17 +347,116 @@ public class Phi.ResponsiveCanvas : Goo.Canvas {
         hover_effect = null;
     }
 
-    // To make it so items can't become imposible to grab. TODOs
-    private int fix_position (int delta, int length, int initial_length) {
-        var max_delta = (initial_length - MIN_SIZE) * current_scale;
-        if (delta < max_delta) {
-            return delta;
-        } else {
-            return (int) max_delta;
+    private int get_grabbed_id (Goo.CanvasItem? target) {
+        for (int i = 0; i < 9; i++) {
+            if (target == nobs[i]) return i;
+        }
+
+        return -1;
+    }
+
+    private void set_cursor_for_nob (int grabbed_id) {
+        switch (grabbed_id) {
+            case -1:
+                set_cursor (Gdk.CursorType.ARROW);
+                break;
+            case 0:
+                set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
+                break;
+            case 1:
+                set_cursor (Gdk.CursorType.TOP_SIDE);
+                break;
+            case 2:
+                set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
+                break;
+            case 3:
+                set_cursor (Gdk.CursorType.RIGHT_SIDE);
+                break;
+            case 4:
+                set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
+                break;
+            case 5:
+                set_cursor (Gdk.CursorType.BOTTOM_SIDE);
+                break;
+            case 6:
+                set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
+                break;
+            case 7:
+                set_cursor (Gdk.CursorType.LEFT_SIDE);
+                break;
+            case 8:
+                set_cursor (Gdk.CursorType.ICON);
+                break;
         }
     }
 
-    private int fix_size (int size) {
-        return size > MIN_SIZE ? size : MIN_SIZE;
+    // Updates all the nub's position arround the selected item, except for the grabbed nub
+    // TODO: concider item rotation into account
+    private void update_nub_position (Goo.CanvasItem target) {
+        var item = (target as Goo.CanvasItemSimple);
+
+        var stroke = (item.line_width / 2);
+        double x, y, width, height;
+        target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+
+        // TOP LEFT nob
+        nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+
+        // TOP CENTER nob
+        nobs[1].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+
+        // TOP RIGHT nob
+        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+
+        // RIGHT CENTER nob
+        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+
+        // BOTTOM RIGHT nob
+        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+
+        // BOTTOM CENTER nob
+        nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+
+        // BOTTOM LEFT nob
+        nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+
+        // LEFT CENTER nob
+        nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+
+        // ROTATE nob
+        double distance = 40;
+        if (current_scale < 1) {
+            distance = 40 + ((40 - (40 * current_scale)) * 2);
+        }
+
+        nobs[8].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
+                    "y", delta_y + start_y - (nob_size / 2) - distance);
+    }
+
+    private void set_cursor (Gdk.CursorType cursor_type) {
+        var cursor = new Gdk.Cursor.for_display (Gdk.Display.get_default (), cursor_type);
+        get_window ().set_cursor (cursor);
+    }
+
+    // To make it so items can't become imposible to grab. TODOs
+    private double fix_position (double delta, double initial_size) {
+        var max_delta = (initial_size - MIN_POS) * current_scale;
+        if (delta < max_delta) {
+            return Math.round (delta);
+        } else {
+            return Math.round (max_delta);
+        }
+    }
+
+    private double fix_size (double size) {
+        return size > MIN_SIZE ? Math.round (size) : MIN_SIZE;
     }
 }
