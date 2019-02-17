@@ -64,11 +64,16 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
     private double nob_size;
     private double current_scale;
     private int holding_id = -1;
+    private double bounds_x;
+    private double bounds_y;
+    private double bounds_w;
+    private double bounds_h;
 
     construct {
         events |= Gdk.EventMask.BUTTON_PRESS_MASK;
         events |= Gdk.EventMask.BUTTON_RELEASE_MASK;
         events |= Gdk.EventMask.POINTER_MOTION_MASK;
+        get_bounds(out bounds_x, out bounds_y, out bounds_w, out bounds_h);
     }
 
     public override bool button_press_event (Gdk.EventButton event) {
@@ -88,6 +93,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
                 remove_select_effect ();
                 if (clicked_item is Goo.CanvasItemSimple) {
                     clicked_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
+                    print("start event: start_x %f, start_y %f, start_w %f, start_h %f\n", start_x, start_y, start_w, start_h);
                 }
 
                 add_select_effect (clicked_item);
@@ -117,6 +123,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         }
 
         selected_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
+        print("release event: start_x %f, start_y %f, start_w %f, start_h %f\n", start_x, start_y, start_w, start_h);
         item_moved (selected_item);
         add_hover_effect (selected_item);
 
@@ -136,14 +143,19 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         delta_x = (event.x - event_x_root) / current_scale;
         delta_y = (event.y - event_y_root) / current_scale;
 
+        print("delta_x: %f\n", delta_x);
+        print("delta_y: %f\n", delta_y);
+
         switch (holding_id) {
             case -1: // Moving
-                var new_x = delta_x + start_x;
-                var new_y = fix_position ((delta_y + start_y), start_h);
+                var new_x = fix_x_position ((delta_x + start_x), start_w);
+                print("new_x: %f\n", new_x);
+                var new_y = fix_y_position ((delta_y + start_y), start_h);
+                print("new_y: %f\n", new_y);
 
                 selected_item.set ("x", new_x, "y", new_y);
 
-                debug ("%f - (%f:%f)", new_x, (delta_y + start_y), new_y);
+                print ("%f - (%f:%f)\n", new_x, (delta_y + start_y), new_y);
                 break;
             case 0: // Top left
                 var new_x = fix_size (delta_x + start_x);
@@ -153,7 +165,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
                 selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
 
-                debug ("%f - %f", new_width, new_height);
+                print ("%f - %f\n", new_width, new_height);
                 break;
             case 1: // Top
                 var new_y = delta_y + start_y;
@@ -447,12 +459,32 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
     }
 
     // To make it so items can't become imposible to grab. TODOs
-    private double fix_position (double delta, double initial_size) {
-        var max_delta = (initial_size - MIN_POS) * current_scale;
-        if (delta < max_delta) {
-            return Math.round (delta);
-        } else {
+    private double fix_y_position (double y, double height) {
+        var min_delta = (MIN_POS - height) * current_scale;
+        var max_delta = (bounds_h + height - MIN_POS) * current_scale;
+        print("min_y_delta %f\n", min_delta);
+        print("max_y_delta %f\n", max_delta);
+        if (y < min_delta) {
+            return Math.round (min_delta);
+        } else if (y > max_delta) {
             return Math.round (max_delta);
+        } else {
+            return Math.round (y);
+        }
+    }
+
+    // To make it so items can't become imposible to grab. TODOs
+    private double fix_x_position (double x, double width) {
+        var min_delta = (MIN_POS - width) * current_scale;
+        var max_delta = (bounds_h + width - MIN_POS) * current_scale;
+        print("min_x_delta %f\n", min_delta);
+        print("max_x_delta %f\n", max_delta);
+        if (x < min_delta) {
+            return Math.round (min_delta);
+        } else if (x > max_delta) {
+            return Math.round (max_delta);
+        } else {
+            return Math.round (x);
         }
     }
 
