@@ -45,6 +45,19 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
         // -1 if no nub is grabbed
     */
+    enum Nob {
+        NONE=-1,
+        TOP_LEFT,
+        TOP_CENTER,
+        TOP_RIGHT,
+        RIGHT_CENTER,
+        BOTTOM_RIGHT,
+        BOTTOM_CENTER,
+        BOTTOM_LEFT,
+        LEFT_CENTER,
+        ROTATE
+    }
+
     private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[9];
 
     private weak Goo.CanvasItem? hovered_item;
@@ -63,7 +76,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
     private double hover_y;
     private double nob_size;
     private double current_scale;
-    private int holding_id = -1;
+    private int holding_id = Nob.NONE;
     private double bounds_x;
     private double bounds_y;
     private double bounds_w;
@@ -89,7 +102,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             var clicked_id = get_grabbed_id (clicked_item);
             holding = true;
 
-            if (clicked_id == -1) { // Non-nub was clicked
+            if (clicked_id == Nob.NONE) { // Non-nub was clicked
                 remove_select_effect ();
                 if (clicked_item is Goo.CanvasItemSimple) {
                     clicked_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
@@ -100,7 +113,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
                 grab_focus (clicked_item);
 
                 selected_item = clicked_item;
-                holding_id = -1;
+                holding_id = Nob.NONE;
             } else { // nub was clicked
                 selected_item.get ("x", out start_x, "y", out start_y);
                 holding_id = clicked_id;
@@ -146,62 +159,60 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         print("delta_x: %f\n", delta_x);
         print("delta_y: %f\n", delta_y);
 
+        var new_x = start_x;
+        var new_y = start_y;
+        var new_width = start_w;
+        var new_height = start_h;
+
         switch (holding_id) {
-            case -1: // Moving
-                var new_x = fix_x_position ((delta_x + start_x), start_w);
-                print("new_x: %f\n", new_x);
-                var new_y = fix_y_position ((delta_y + start_y), start_h);
-                print("new_y: %f\n", new_y);
-
-                selected_item.set ("x", new_x, "y", new_y);
-
-                print ("%f - (%f:%f)\n", new_x, (delta_y + start_y), new_y);
+            case Nob.NONE: // Moving
+                new_x = fix_x_position ((delta_x + start_x), start_w);
+                new_y = fix_y_position ((delta_y + start_y), start_h);
                 break;
-            case 0: // Top left
-                var new_x = fix_size (delta_x + start_x);
-                var new_y = fix_size (delta_y + start_y);
-                var new_width = fix_size (start_w - delta_x);
-                var new_height = fix_size (start_h - delta_y);
-
-                selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
-
-                print ("%f - %f\n", new_width, new_height);
+            case Nob.TOP_LEFT:
+                new_x = fix_size (delta_x + start_x);
+                new_y = fix_size (delta_y + start_y);
+                new_width = fix_size (start_w - delta_x);
+                new_height = fix_size (start_h - delta_y);
                 break;
-            case 1: // Top
-                var new_y = delta_y + start_y;
-                var new_height = start_h - delta_y;
-
-                selected_item.set ("x", start_x, "y", new_y, "width", start_w, "height", new_height);
+            case Nob.TOP_CENTER:
+                new_y = delta_y + start_y;
+                new_height = start_h - delta_y;
                 break;
-            //  case 2: // Top right
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      break;
-            //  case 3: // Right
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      break;
-            //  case 4: // Bottom Right
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      break;
-            //  case 5: // Bottom
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      break;
-            //  case 6: // Bottom left
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      break;
-            case 7: // Left
-                var new_x = delta_x + start_x;
-                var new_width = start_w - delta_x;
-
-                selected_item.set ("x", new_x, "y", start_y, "width", new_width, "height", start_h);
+            case Nob.TOP_RIGHT:
+                new_x = start_x;
+                new_y = fix_size (delta_y + start_y);
+                new_width = fix_size (start_w + delta_x);
+                new_height = fix_size (start_h - delta_y);
+                break;
+            case Nob.RIGHT_CENTER:
+                new_width = start_w + delta_x;
+                break;
+            case Nob.BOTTOM_RIGHT:
+                new_width = fix_size (start_w + delta_x);
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.BOTTOM_CENTER:
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.BOTTOM_LEFT:
+                new_x = fix_size(delta_x + start_x);
+                new_width = fix_size (start_w - delta_x);
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.LEFT_CENTER:
+                new_x = delta_x + start_x;
+                new_width = start_w - delta_x;
+                break;
+            case Nob.ROTATE:
+                break;
+            default:
+                print("grab rotate");
                 break;
         }
+        selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
 
-        update_nub_position (selected_item);
+        update_nob_position (selected_item);
         update_select_effect (selected_item);
 
         return false;
@@ -266,7 +277,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             nobs[i].set ("parent", get_root_item ());
         }
 
-        update_nub_position (target);
+        update_nob_position (target);
         select_effect.can_focus = false;
     }
 
@@ -364,39 +375,39 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             if (target == nobs[i]) return i;
         }
 
-        return -1;
+        return Nob.NONE;
     }
 
     private void set_cursor_for_nob (int grabbed_id) {
         switch (grabbed_id) {
-            case -1:
+            case Nob.NONE:
                 set_cursor (Gdk.CursorType.ARROW);
                 break;
-            case 0:
+            case Nob.TOP_LEFT:
                 set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
                 break;
-            case 1:
+            case Nob.TOP_CENTER:
                 set_cursor (Gdk.CursorType.TOP_SIDE);
                 break;
-            case 2:
+            case Nob.TOP_RIGHT:
                 set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
                 break;
-            case 3:
+            case Nob.RIGHT_CENTER:
                 set_cursor (Gdk.CursorType.RIGHT_SIDE);
                 break;
-            case 4:
+            case Nob.BOTTOM_RIGHT:
                 set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
                 break;
-            case 5:
+            case Nob.BOTTOM_CENTER:
                 set_cursor (Gdk.CursorType.BOTTOM_SIDE);
                 break;
-            case 6:
+            case Nob.BOTTOM_LEFT:
                 set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
                 break;
-            case 7:
+            case Nob.LEFT_CENTER:
                 set_cursor (Gdk.CursorType.LEFT_SIDE);
                 break;
-            case 8:
+            case Nob.ROTATE:
                 set_cursor (Gdk.CursorType.ICON);
                 break;
         }
@@ -404,44 +415,43 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
     // Updates all the nub's position arround the selected item, except for the grabbed nub
     // TODO: concider item rotation into account
-    private void update_nub_position (Goo.CanvasItem target) {
+    private void update_nob_position (Goo.CanvasItem target) {
         var item = (target as Goo.CanvasItemSimple);
 
         var stroke = (item.line_width / 2);
         double x, y, width, height;
         target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+        var middle = (nob_size / 2) + stroke;
+        var middle_stroke = (nob_size / 2) - stroke;
 
         // TOP LEFT nob
-        nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[Nob.TOP_LEFT].set ("x", x - middle, "y", y - middle);
 
         // TOP CENTER nob
-        nobs[1].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[Nob.TOP_CENTER].set ("x", x + (width / 2) - middle, "y", y - middle);
 
         // TOP RIGHT nob
-        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        nobs[Nob.TOP_RIGHT].set ("x", x + width - middle_stroke, "y", y - middle);
 
         // RIGHT CENTER nob
-        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nobs[Nob.RIGHT_CENTER].set ("x", x + width - middle_stroke,
+                    "y", y + (height / 2) - middle);
 
         // BOTTOM RIGHT nob
-        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[Nob.BOTTOM_RIGHT].set ("x", x + width - middle_stroke,
+                    "y", y + height - middle_stroke);
 
         // BOTTOM CENTER nob
-        nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[Nob.BOTTOM_CENTER].set ("x", x + (width / 2) - middle,
+                    "y", y + height - middle_stroke);
 
         // BOTTOM LEFT nob
-        nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nobs[Nob.BOTTOM_LEFT].set ("x", x - middle,
+                    "y", y + height - middle_stroke);
 
         // LEFT CENTER nob
-        nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nobs[Nob.LEFT_CENTER].set ("x", x - middle,
+                    "y", y + (height / 2) - middle);
 
         // ROTATE nob
         double distance = 40;
@@ -449,8 +459,8 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             distance = 40 + ((40 - (40 * current_scale)) * 2);
         }
 
-        nobs[8].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - distance);
+        nobs[Nob.ROTATE].set ("x", x + (width / 2) - middle,
+                    "y", y - (nob_size / 2) - distance);
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {
