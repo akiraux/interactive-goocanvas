@@ -45,6 +45,19 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
         // -1 if no nub is grabbed
     */
+    enum Nob {
+        NONE=-1,
+        TOP_LEFT,
+        TOP_CENTER,
+        TOP_RIGHT,
+        RIGHT_CENTER,
+        BOTTOM_RIGHT,
+        BOTTOM_CENTER,
+        BOTTOM_LEFT,
+        LEFT_CENTER,
+        ROTATE
+    }
+
     private Goo.CanvasItemSimple[] nobs = new Goo.CanvasItemSimple[9];
 
     private weak Goo.CanvasItem? hovered_item;
@@ -63,12 +76,17 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
     private double hover_y;
     private double nob_size;
     private double current_scale;
-    private int holding_id = -1;
+    private int holding_id = Nob.NONE;
+    private double bounds_x;
+    private double bounds_y;
+    private double bounds_w;
+    private double bounds_h;
 
     construct {
         events |= Gdk.EventMask.BUTTON_PRESS_MASK;
         events |= Gdk.EventMask.BUTTON_RELEASE_MASK;
         events |= Gdk.EventMask.POINTER_MOTION_MASK;
+        get_bounds(out bounds_x, out bounds_y, out bounds_w, out bounds_h);
     }
 
     public override bool button_press_event (Gdk.EventButton event) {
@@ -84,17 +102,18 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             var clicked_id = get_grabbed_id (clicked_item);
             holding = true;
 
-            if (clicked_id == -1) { // Non-nub was clicked
+            if (clicked_id == Nob.NONE) { // Non-nub was clicked
                 remove_select_effect ();
                 if (clicked_item is Goo.CanvasItemSimple) {
                     clicked_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
+                    print("start event: start_x %f, start_y %f, start_w %f, start_h %f\n", start_x, start_y, start_w, start_h);
                 }
 
                 add_select_effect (clicked_item);
                 grab_focus (clicked_item);
 
                 selected_item = clicked_item;
-                holding_id = -1;
+                holding_id = Nob.NONE;
             } else { // nub was clicked
                 selected_item.get ("x", out start_x, "y", out start_y);
                 holding_id = clicked_id;
@@ -117,6 +136,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         }
 
         selected_item.get ("x", out start_x, "y", out start_y, "width", out start_w, "height", out start_h);
+        print("release event: start_x %f, start_y %f, start_w %f, start_h %f\n", start_x, start_y, start_w, start_h);
         item_moved (selected_item);
         add_hover_effect (selected_item);
 
@@ -136,63 +156,100 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         delta_x = (event.x - event_x_root) / current_scale;
         delta_y = (event.y - event_y_root) / current_scale;
 
+        print("delta_x: %f\n", delta_x);
+        print("delta_y: %f\n", delta_y);
+
+        var new_x = start_x;
+        var new_y = start_y;
+        var new_width = start_w;
+        var new_height = start_h;
+        var center_x = start_x + start_w / 2;
+        var center_y = start_y + start_h / 2;
+
+        Cairo.Matrix matrix = Cairo.Matrix.identity();
+        selected_item.get_transform(out matrix);
+        if (matrix.invert() == Cairo.Status.INVALID_MATRIX) {
+            matrix = Cairo.Matrix.identity();
+        } else {
+            selected_item.get_transform(out matrix);
+        }
+
         switch (holding_id) {
-            case -1: // Moving
-                var new_x = delta_x + start_x;
-                var new_y = fix_position ((delta_y + start_y), start_h);
-
-                selected_item.set ("x", new_x, "y", new_y);
-
-                debug ("%f - (%f:%f)", new_x, (delta_y + start_y), new_y);
+            case Nob.NONE: // Moving
+                new_x = fix_x_position ((delta_x + start_x), start_w);
+                new_y = fix_y_position ((delta_y + start_y), start_h);
                 break;
-            case 0: // Top left
-                var new_x = fix_size (delta_x + start_x);
-                var new_y = fix_size (delta_y + start_y);
-                var new_width = fix_size (start_w - delta_x);
-                var new_height = fix_size (start_h - delta_y);
-
-                selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
-
-                debug ("%f - %f", new_width, new_height);
+            case Nob.TOP_LEFT:
+                new_x = fix_size (delta_x + start_x);
+                new_y = fix_size (delta_y + start_y);
+                new_width = fix_size (start_w - delta_x);
+                new_height = fix_size (start_h - delta_y);
                 break;
-            case 1: // Top
-                var new_y = delta_y + start_y;
-                var new_height = start_h - delta_y;
-
-                selected_item.set ("x", start_x, "y", new_y, "width", start_w, "height", new_height);
+            case Nob.TOP_CENTER:
+                new_y = delta_y + start_y;
+                new_height = start_h - delta_y;
                 break;
-            //  case 2: // Top right
-            //      delta_y = fix_position (y, real_height, start_h);
-            //      real_height = fix_size ((int)(start_h - 1 / current_scale * y));
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      break;
-            //  case 3: // Right
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      break;
-            //  case 4: // Bottom Right
-            //      real_width = fix_size ((int)(start_w + 1 / current_scale * x));
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      break;
-            //  case 5: // Bottom
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      break;
-            //  case 6: // Bottom left
-            //      real_height = fix_size ((int)(start_h + 1 / current_scale * y));
-            //      real_width = fix_size ((int)(start_w - 1 / current_scale * x));
-            //      delta_x = fix_position (x, real_width, start_w);
-            //      break;
-            case 7: // Left
-                var new_x = delta_x + start_x;
-                var new_width = start_w - delta_x;
+            case Nob.TOP_RIGHT:
+                new_x = start_x;
+                new_y = fix_size (delta_y + start_y);
+                new_width = fix_size (start_w + delta_x);
+                new_height = fix_size (start_h - delta_y);
+                break;
+            case Nob.RIGHT_CENTER:
+                new_width = start_w + delta_x;
+                break;
+            case Nob.BOTTOM_RIGHT:
+                new_width = fix_size (start_w + delta_x);
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.BOTTOM_CENTER:
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.BOTTOM_LEFT:
+                new_x = fix_size(delta_x + start_x);
+                new_width = fix_size (start_w - delta_x);
+                new_height = fix_size (start_h + delta_y);
+                break;
+            case Nob.LEFT_CENTER:
+                new_x = delta_x + start_x;
+                new_width = start_w - delta_x;
+                break;
+            case Nob.ROTATE:
+                double x, y, width, height;
+                nobs[Nob.ROTATE].get ("x", out x, "y", out y, "width", out width, "height", out height);
+                var stroke = (nobs[Nob.ROTATE].line_width / 2);
+                var middle = (nob_size / 2) + stroke;
+                var nob_center_x = x + middle;
+                var nob_center_y = y;
 
-                selected_item.set ("x", new_x, "y", start_y, "width", new_width, "height", start_h);
+                var rotation = Math.atan2 (event_x_root - center_x + delta_x, center_y - event_y_root - delta_y);
+                matrix = Cairo.Matrix.identity();
+                matrix.translate(center_x, center_y);
+                matrix.rotate (rotation);
+                matrix.translate(-center_x, -center_y);
+                selected_item.set_transform(matrix);
+                print("center: (%f,%f), nob: (%f,%f), rotation %f\n",
+                      center_x, center_y, nob_center_x, nob_center_y, to_deg(rotation));
+                break;
+            default:
                 break;
         }
 
-        update_nub_position (selected_item);
-        update_select_effect (selected_item);
+        print("new_x %f, new_y %f, start_x %f, start_y %f\n", new_x, new_y, start_x, start_y);
+        selected_item.set ("x", new_x, "y", new_y, "width", new_width, "height", new_height);
+
+        update_nob_position (selected_item, matrix);
+        update_select_effect (selected_item, matrix);
 
         return false;
+    }
+
+    inline double to_radians (double degrees) {
+        return degrees / (180.0 / Math.PI);
+    }
+
+    inline double to_deg (double rad) {
+        return rad * (180.0 / Math.PI);
     }
 
     private void motion_hover_event (Gdk.EventMotion event) {
@@ -254,11 +311,13 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             nobs[i].set ("parent", get_root_item ());
         }
 
-        update_nub_position (target);
+        Cairo.Matrix matrix = Cairo.Matrix.identity();
+        target.get_transform (out matrix);
+        update_nob_position (target, matrix);
         select_effect.can_focus = false;
     }
 
-    private void update_select_effect (Goo.CanvasItem? target) {
+    private void update_select_effect (Goo.CanvasItem? target, Cairo.Matrix matrix) {
         if (target == null || target == select_effect) {
             return;
         }
@@ -273,6 +332,7 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
         var real_y = y - (line_width * 2);
 
         select_effect.set ("x", real_x, "y", real_y, "width", width + (stroke * 2), "height", height + (stroke * 2));
+        select_effect.set_transform(matrix);
     }
 
     private void remove_select_effect () {
@@ -331,6 +391,10 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
                                    "line-width", line_width,
                                    "stroke-color", "#41c9fd", null
                                    );
+
+        Cairo.Matrix matrix = Cairo.Matrix.identity();
+        target.get_transform (out matrix);
+        hover_effect.set_transform(matrix);
         hover_effect.set ("parent", get_root_item ());
 
         hover_effect.can_focus = false;
@@ -352,39 +416,39 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             if (target == nobs[i]) return i;
         }
 
-        return -1;
+        return Nob.NONE;
     }
 
     private void set_cursor_for_nob (int grabbed_id) {
         switch (grabbed_id) {
-            case -1:
+            case Nob.NONE:
                 set_cursor (Gdk.CursorType.ARROW);
                 break;
-            case 0:
+            case Nob.TOP_LEFT:
                 set_cursor (Gdk.CursorType.TOP_LEFT_CORNER);
                 break;
-            case 1:
+            case Nob.TOP_CENTER:
                 set_cursor (Gdk.CursorType.TOP_SIDE);
                 break;
-            case 2:
+            case Nob.TOP_RIGHT:
                 set_cursor (Gdk.CursorType.TOP_RIGHT_CORNER);
                 break;
-            case 3:
+            case Nob.RIGHT_CENTER:
                 set_cursor (Gdk.CursorType.RIGHT_SIDE);
                 break;
-            case 4:
+            case Nob.BOTTOM_RIGHT:
                 set_cursor (Gdk.CursorType.BOTTOM_RIGHT_CORNER);
                 break;
-            case 5:
+            case Nob.BOTTOM_CENTER:
                 set_cursor (Gdk.CursorType.BOTTOM_SIDE);
                 break;
-            case 6:
+            case Nob.BOTTOM_LEFT:
                 set_cursor (Gdk.CursorType.BOTTOM_LEFT_CORNER);
                 break;
-            case 7:
+            case Nob.LEFT_CENTER:
                 set_cursor (Gdk.CursorType.LEFT_SIDE);
                 break;
-            case 8:
+            case Nob.ROTATE:
                 set_cursor (Gdk.CursorType.ICON);
                 break;
         }
@@ -392,44 +456,62 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
 
     // Updates all the nub's position arround the selected item, except for the grabbed nub
     // TODO: concider item rotation into account
-    private void update_nub_position (Goo.CanvasItem target) {
+    private void update_nob_position (Goo.CanvasItem target, Cairo.Matrix? matrix)  {
         var item = (target as Goo.CanvasItemSimple);
 
         var stroke = (item.line_width / 2);
         double x, y, width, height;
         target.get ("x", out x, "y", out y, "width", out width, "height", out height);
+        var middle = (nob_size / 2) + stroke;
+        var middle_stroke = (nob_size / 2) - stroke;
 
         // TOP LEFT nob
-        nobs[0].set ("x", delta_x + start_x - (nob_size / 2) - stroke, 
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        var nob = nobs[Nob.TOP_LEFT];
+        nob.set ("x", x - middle, "y", y - middle);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // TOP CENTER nob
-        nobs[1].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        nob = nobs[Nob.TOP_CENTER];
+        nob.set ("x", x + (width / 2) - middle, "y", y - middle);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // TOP RIGHT nob
-        nobs[2].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - stroke);
+        nob = nobs[Nob.TOP_RIGHT];
+        nob.set ("x", x + width - middle_stroke, "y", y - middle);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // RIGHT CENTER nob
-        nobs[3].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nob = nobs[Nob.RIGHT_CENTER];
+        nob.set ("x", x + width - middle_stroke, "y", y + (height / 2) - middle);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // BOTTOM RIGHT nob
-        nobs[4].set ("x", delta_x + start_x + width - (nob_size / 2) + stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nob = nobs[Nob.BOTTOM_RIGHT];
+        nob.set ("x", x + width - middle_stroke, "y", y + height - middle_stroke);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // BOTTOM CENTER nob
-        nobs[5].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nob = nobs[Nob.BOTTOM_CENTER];
+        nob.set ("x", x + (width / 2) - middle, "y", y + height - middle_stroke);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // BOTTOM LEFT nob
-        nobs[6].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + height - (nob_size / 2) + stroke);
+        nob = nobs[Nob.BOTTOM_LEFT];
+        nob.set ("x", x - middle, "y", y + height - middle_stroke);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // LEFT CENTER nob
-        nobs[7].set ("x", delta_x + start_x - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y + (height / 2) - (nob_size / 2) - stroke);
+        nob = nobs[Nob.LEFT_CENTER];
+        nob.set ("x", x - middle, "y", y + (height / 2) - middle);
+        if (matrix != null)
+           nob.set_transform(matrix);
 
         // ROTATE nob
         double distance = 40;
@@ -437,8 +519,10 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
             distance = 40 + ((40 - (40 * current_scale)) * 2);
         }
 
-        nobs[8].set ("x", delta_x + start_x + (width / 2) - (nob_size / 2) - stroke,
-                    "y", delta_y + start_y - (nob_size / 2) - distance);
+        nob = nobs[Nob.ROTATE];
+        nob.set ("x", x + (width / 2) - middle, "y", y - (nob_size / 2) - distance);
+        if (matrix != null)
+           nob.set_transform(matrix);
     }
 
     private void set_cursor (Gdk.CursorType cursor_type) {
@@ -447,12 +531,32 @@ public class GCav.ResponsiveCanvas : Goo.Canvas {
     }
 
     // To make it so items can't become imposible to grab. TODOs
-    private double fix_position (double delta, double initial_size) {
-        var max_delta = (initial_size - MIN_POS) * current_scale;
-        if (delta < max_delta) {
-            return Math.round (delta);
-        } else {
+    private double fix_y_position (double y, double height) {
+        var min_delta = (MIN_POS - height) * current_scale;
+        var max_delta = (bounds_h + height - MIN_POS) * current_scale;
+        print("min_y_delta %f\n", min_delta);
+        print("max_y_delta %f\n", max_delta);
+        if (y < min_delta) {
+            return Math.round (min_delta);
+        } else if (y > max_delta) {
             return Math.round (max_delta);
+        } else {
+            return Math.round (y);
+        }
+    }
+
+    // To make it so items can't become imposible to grab. TODOs
+    private double fix_x_position (double x, double width) {
+        var min_delta = (MIN_POS - width) * current_scale;
+        var max_delta = (bounds_h + width - MIN_POS) * current_scale;
+        print("min_x_delta %f\n", min_delta);
+        print("max_x_delta %f\n", max_delta);
+        if (x < min_delta) {
+            return Math.round (min_delta);
+        } else if (x > max_delta) {
+            return Math.round (max_delta);
+        } else {
+            return Math.round (x);
         }
     }
 
