@@ -21,7 +21,7 @@
 * Authored by: Alessandro Castellani <castellani.ale@gmail.com>
 */
 
-public class GCav.Application : Granite.Application {
+public class GCav.Application : Gtk.Application {
     public const string PROGRAM_ID = "com.github.akiraux.interactive-goocanvas";
     public const string PROGRAM_NAME = "CanvasDemo";
 
@@ -29,11 +29,6 @@ public class GCav.Application : Granite.Application {
         flags |= ApplicationFlags.HANDLES_OPEN;
 
         application_id = PROGRAM_ID;
-        program_name = PROGRAM_NAME;
-        exec_name = PROGRAM_ID;
-        app_launcher = PROGRAM_ID;
-
-        build_version = "1.0.0";
     }
 
     public static Gtk.Window? window = null;
