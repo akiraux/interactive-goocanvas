@@ -78,6 +78,19 @@ public class GCav.Application : Gtk.Application {
         var text = new Goo.CanvasText (null, "Add text here", 20, 20, 200, Goo.CanvasAnchorType.NW, "font", "Open Sans 18");
         text.set ("parent", root);
 
+        var points = new Goo.CanvasPoints(4);
+        points.set_point(0, 10, 10);
+        points.set_point(1, 50, 30);
+        points.set_point(2, 80, 60);
+        points.set_point(3, 40, 80);
+        var poly = new Goo.CanvasPolyline (null, false, 4, "points", points);
+        poly.set("parent", root);
+        poly.line_width = 10.0;
+        poly.fill_color = "red";
+        poly.stroke_color = "blue";
+        poly.x = 420;
+        poly.y = 120;
+
         window.add (canvas);
         window.show_all ();
 
